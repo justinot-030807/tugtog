@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.2
   on_audio_query: ^2.9.0
-  permission_handler: ^13.0.2
+  permission_handler: ^11.3.1
   just_audio: ^0.10.6
   just_audio_background: ^0.0.1-beta.17
   audio_session: ^0.2.4

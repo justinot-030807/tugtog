@@ -35,11 +35,17 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Patch on_audio_query namespace for AGP 8
+      - name: Patch plugins namespace for AGP 8
         run: |
-          find /home/runner/.pub-cache/hosted/pub.dev/ -name "build.gradle" | while read -r file; do
+          find /home/runner/.pub-cache/hosted/pub.dev/on_audio_query_android-*/android/build.gradle -type f 2>/dev/null | while read -r file; do
+            if ! grep -q "namespace" "$file"; then
+              echo "Patching on_audio_query_android namespace in $file"
+              sed -i "/android {/a \    namespace 'com.lucasjosino.on_audio_query'" "$file"
+            fi
+          done
+          find /home/runner/.pub-cache/hosted/pub.dev/ -name "build.gradle" -type f 2>/dev/null | while read -r file; do
             if grep -q "com.android.library" "$file" && ! grep -q "namespace" "$file"; then
-              echo "Injecting namespace into $file"
+              echo "Patching library namespace in $file"
               sed -i "/android {/a \    namespace 'com.lucasjosino.on_audio_query'" "$file"
             fi
           done
