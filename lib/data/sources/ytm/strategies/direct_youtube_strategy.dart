@@ -137,54 +137,7 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
       return;
     }
 
-    // 3. Auto-Download Cache Enabled (Spotify Premium style)
-    if (settings.autoDownloadCache) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Caching "${track.title}" for offline play...',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            duration: const Duration(seconds: 4),
-            backgroundColor: AppColors.surfaceElevated,
-          ),
-        );
-      }
-
-      try {
-        final downloadedTrack = await TrackCacheService.instance.downloadTrack(track);
-        ref.read(settingsProvider.notifier).refreshCacheSize();
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        }
-
-        // Play instantly from local storage
-        await ref.read(playerControllerProvider.notifier).playSongList(
-          [downloadedTrack],
-          0,
-        );
-        return;
-      } catch (e) {
-        debugPrint('Auto-cache failed, falling back to direct stream: $e');
-      }
-    }
-
-    // 4. Fallback or Auto-cache disabled: Stream directly
+    // 3. Resolve stream URL immediately for instant playback (< 1 second)
     if (context.mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -205,7 +158,7 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
               ),
             ],
           ),
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 2),
           backgroundColor: AppColors.surfaceElevated,
         ),
       );
@@ -217,10 +170,22 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
       }
+
+      // Play immediately without making user wait for full download!
       await ref.read(playerControllerProvider.notifier).playSongList(
         [result.track!],
         0,
       );
+
+      // 4. Background Auto-Download Cache (Spotify Premium style)
+      // Cache quietly in background for zero buffering and zero data on future plays
+      if (settings.autoDownloadCache) {
+        TrackCacheService.instance.downloadTrack(track).then((_) {
+          ref.read(settingsProvider.notifier).refreshCacheSize();
+        }).catchError((e) {
+          debugPrint('Background cache failed for "${track.title}": $e');
+        });
+      }
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();

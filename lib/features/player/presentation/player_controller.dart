@@ -20,16 +20,11 @@ class PlayerController extends Notifier<CurrentPlayerState> {
 
   @override
   CurrentPlayerState build() {
-    try {
-      _equalizer = AndroidEqualizer();
-      _player = AudioPlayer(
-        audioPipeline: AudioPipeline(
-          androidAudioEffects: [_equalizer!],
-        ),
-      );
-    } catch (_) {
-      _player = AudioPlayer();
-    }
+    // Note: Do not attach AudioPipeline with AndroidEqualizer to default AudioPlayer.
+    // On Xiaomi/MIUI/Redmi and Samsung devices, native AudioEffects in AudioPipeline
+    // cause native AudioSink stalls where playback position remains frozen at 0:00.
+    _player = AudioPlayer();
+    _equalizer = null;
 
     _initAudioSession();
     _listenToPlayerEvents();
@@ -291,10 +286,6 @@ class PlayerController extends Notifier<CurrentPlayerState> {
     } else {
       return AudioSource.uri(
         Uri.parse(uriStr),
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
         tag: mediaItem,
       );
     }
