@@ -14,7 +14,7 @@ class YtStreamResolver implements StreamResolver {
 
   YtStreamResolver({
     List<StreamResolverStrategy> initialStrategies = const [],
-    this.activeStrategyId = 'match_audio',
+    this.activeStrategyId = 'direct_youtube',
   }) {
     for (final strategy in initialStrategies) {
       registerStrategy(strategy);

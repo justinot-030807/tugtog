@@ -136,7 +136,7 @@ class SearchNotifier extends Notifier<SearchState> {
       state = state.copyWith(
         ytmResults: SourceSearchResult(
           isLoading: false,
-          error: 'YouTube Music companion offline or unreachable.',
+          error: 'YouTube search failed. Check your internet connection.',
         ),
       );
     }

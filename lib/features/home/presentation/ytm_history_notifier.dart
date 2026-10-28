@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/sources/ytm/strategies/direct_youtube_strategy.dart';
 import '../../../data/sources/ytm/strategies/match_audio_strategy.dart';
 import '../../../data/sources/ytm/strategies/youtube_iframe_strategy.dart';
 import '../../../data/sources/ytm/ytm_stream_resolver.dart';
@@ -47,6 +48,7 @@ final ytStreamResolverProvider = Provider<YtStreamResolver>((ref) {
 
   return YtStreamResolver(
     initialStrategies: [
+      DirectYoutubeStrategy(),
       MatchAudioStrategy(audiusSource: audius, jamendoSource: jamendo),
       YouTubeIFrameStrategy(),
     ],

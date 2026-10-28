@@ -1,8 +1,14 @@
 import 'package:dio/dio.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../../../domain/models/track.dart';
 import '../../../domain/sources/music_source.dart';
+import 'yt_music_auth_service.dart';
 
-/// Concrete MusicSource implementation connecting to the local Tugtog FastAPI backend.
+/// Concrete MusicSource implementation for YouTube Music.
+///
+/// Supports direct client-side searching and streaming via [YoutubeExplode],
+/// optional direct in-app account login with history extraction, and optional
+/// fallback to a local Tugtog FastAPI companion backend.
 class YtMusicSource implements MusicSource {
   final Dio _dio;
   final String baseUrl;
@@ -14,8 +20,8 @@ class YtMusicSource implements MusicSource {
             Dio(
               BaseOptions(
                 baseUrl: baseUrl,
-                connectTimeout: const Duration(seconds: 8),
-                receiveTimeout: const Duration(seconds: 12),
+                connectTimeout: const Duration(seconds: 4),
+                receiveTimeout: const Duration(seconds: 6),
               ),
             );
 
@@ -62,6 +68,16 @@ class YtMusicSource implements MusicSource {
 
   @override
   Future<List<Track>> getRecentlyPlayed() async {
+    // 1. Try fetching directly via in-app login cookies first
+    final cookies = await YtMusicAuthService.getCookies();
+    if (cookies != null && cookies.isNotEmpty) {
+      final directHistory = await YtMusicAuthService.fetchHistoryDirect(cookies);
+      if (directHistory.isNotEmpty) {
+        return directHistory;
+      }
+    }
+
+    // 2. Fall back to companion FastAPI backend if available
     try {
       final response = await _dio.get('/history');
       if (response.statusCode == 200 && response.data is List) {
@@ -71,25 +87,52 @@ class YtMusicSource implements MusicSource {
             .where((t) => t.extraMetadata['videoId'] != null && t.extraMetadata['videoId'] != '')
             .toList();
       }
-      return [];
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        final detail = e.response?.data?['detail'] ?? 'YouTube Music session expired.';
-        throw Exception(detail);
-      }
-      throw Exception(
-        'Cannot connect to YouTube Music backend at $baseUrl. '
-        'Ensure the FastAPI server is running or update the URL in Settings.',
-      );
+    } catch (_) {
+      // Backend unavailable; return empty without breaking UI
     }
+
+    return [];
   }
 
   @override
   Future<List<Track>> search(String query) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return [];
+
+    // 1. Primary: Direct YouTube search via YoutubeExplode (Works everywhere without backend)
+    try {
+      final yt = YoutubeExplode();
+      try {
+        final searchResults = await yt.search.search(cleanQuery);
+        if (searchResults.isNotEmpty) {
+          return searchResults.map((video) {
+            return Track(
+              id: 'ytm_${video.id.value}',
+              title: video.title,
+              artist: video.author,
+              duration: video.duration,
+              artworkUrl: video.thumbnails.highResUrl,
+              sourceType: AudioSourceType.youtubeMusic,
+              extraMetadata: {
+                'videoId': video.id.value,
+                'channelId': video.channelId.value,
+                'uploadDate': video.uploadDate?.toIso8601String(),
+              },
+            );
+          }).toList();
+        }
+      } finally {
+        yt.close();
+      }
+    } catch (_) {
+      // Fall through to backend search if available
+    }
+
+    // 2. Secondary: Fall back to companion backend if running
     try {
       final response = await _dio.get(
         '/search',
-        queryParameters: {'q': query},
+        queryParameters: {'q': cleanQuery},
       );
       if (response.statusCode == 200 && response.data is List) {
         final rawList = response.data as List;
@@ -97,19 +140,33 @@ class YtMusicSource implements MusicSource {
             .map((item) => _mapJsonToTrack(item as Map<String, dynamic>))
             .toList();
       }
-      return [];
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        final detail = e.response?.data?['detail'] ?? 'Authentication failed.';
-        throw Exception(detail);
-      }
-      throw Exception('Search error from backend: ${e.message}');
-    }
+    } catch (_) {}
+
+    return [];
   }
 
   @override
   Future<List<Track>> getTrending({int page = 1, int limit = 20}) async {
-    // Trending songs search via YouTube Music
-    return await search('Top trending hits');
+    try {
+      final yt = YoutubeExplode();
+      try {
+        final searchResults = await yt.search.search('trending music hits');
+        return searchResults.take(limit).map((video) {
+          return Track(
+            id: 'ytm_${video.id.value}',
+            title: video.title,
+            artist: video.author,
+            duration: video.duration,
+            artworkUrl: video.thumbnails.highResUrl,
+            sourceType: AudioSourceType.youtubeMusic,
+            extraMetadata: {'videoId': video.id.value},
+          );
+        }).toList();
+      } finally {
+        yt.close();
+      }
+    } catch (_) {
+      return [];
+    }
   }
 }

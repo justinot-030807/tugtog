@@ -9,7 +9,7 @@ class SettingsState {
 
   const SettingsState({
     this.backendBaseUrl = 'http://192.168.1.100:8000',
-    this.streamResolutionStrategyId = 'match_audio',
+    this.streamResolutionStrategyId = 'direct_youtube',
     this.isLoaded = false,
   });
 
@@ -32,7 +32,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
   static const String _backendUrlKey = 'backend_base_url';
   static const String _strategyKey = 'stream_resolution_strategy';
   static const String defaultBackendUrl = 'http://192.168.1.100:8000';
-  static const String defaultStrategyId = 'match_audio';
+  static const String defaultStrategyId = 'direct_youtube';
 
   @override
   SettingsState build() {
@@ -45,7 +45,12 @@ class SettingsNotifier extends Notifier<SettingsState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedUrl = prefs.getString(_backendUrlKey) ?? defaultBackendUrl;
-      final savedStrategy = prefs.getString(_strategyKey) ?? defaultStrategyId;
+      var savedStrategy = prefs.getString(_strategyKey) ?? defaultStrategyId;
+      // Auto-migrate legacy default 'match_audio' to 'direct_youtube'
+      if (savedStrategy == 'match_audio') {
+        savedStrategy = defaultStrategyId;
+        await prefs.setString(_strategyKey, defaultStrategyId);
+      }
       state = state.copyWith(
         backendBaseUrl: savedUrl,
         streamResolutionStrategyId: savedStrategy,

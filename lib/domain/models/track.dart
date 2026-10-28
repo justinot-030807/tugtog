@@ -74,4 +74,29 @@ class Track {
           : const {},
     );
   }
+
+  /// Creates a copy of this track with optional modified attributes.
+  Track copyWith({
+    String? id,
+    String? title,
+    String? artist,
+    String? album,
+    Duration? duration,
+    String? artworkUrl,
+    AudioSourceType? sourceType,
+    String? mediaUri,
+    Map<String, dynamic>? extraMetadata,
+  }) {
+    return Track(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      album: album ?? this.album,
+      duration: duration ?? this.duration,
+      artworkUrl: artworkUrl ?? this.artworkUrl,
+      sourceType: sourceType ?? this.sourceType,
+      mediaUri: mediaUri ?? this.mediaUri,
+      extraMetadata: extraMetadata ?? this.extraMetadata,
+    );
+  }
 }

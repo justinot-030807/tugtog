@@ -10,6 +10,8 @@ import '../../library/presentation/playlist_detail_screen.dart';
 import '../../library/presentation/playlist_notifier.dart';
 import '../../player/presentation/player_controller.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../../settings/presentation/yt_music_login_screen.dart';
+import '../../../data/sources/ytm/yt_music_auth_service.dart';
 import 'discover_notifier.dart';
 import 'ytm_history_notifier.dart';
 
@@ -528,91 +530,97 @@ class HomeScreen extends ConsumerWidget {
               itemBuilder: (context, index) => _buildShimmerTrackCard(),
             ),
           )
-        // 2. Error State
-        else if (state.errorMessage != null)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.cloud_off, color: Colors.redAccent, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        state.errorMessage!,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
+        // 2. Empty or Not Connected State (Friendly card instead of scary red error)
+        else if (state.tracks.isEmpty)
+          FutureBuilder<bool>(
+            future: YtMusicAuthService.isLoggedIn(),
+            builder: (context, snapshot) {
+              final isLoggedIn = snapshot.data == true;
+              if (isLoggedIn) {
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, color: AppColors.primary, size: 24),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Connected to YouTube Music. Listen to tracks on YouTube Music to display them here!',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                );
+              }
+
+              // Not logged in: Show stylish Connect card
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                child: Row(
                   children: [
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.divider),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const SettingsScreen()),
-                        );
-                      },
-                      child: const Text('Backend Settings',
-                          style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                      child: const Icon(Icons.play_circle_fill, color: Colors.redAccent, size: 28),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Connect YouTube Music (Optional)',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Log in with Google to view your recently played YouTube Music tracks.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       ),
-                      onPressed: () =>
-                          ref.read(ytmHistoryProvider.notifier).fetchHistory(),
-                      child: const Text('Retry', style: TextStyle(fontSize: 12)),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const YtMusicLoginScreen()),
+                        );
+                      },
+                      child: const Text('Log In', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ],
                 ),
-              ],
-            ),
-          )
-        // 3. Empty State
-        else if (state.tracks.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.music_note, color: AppColors.textSecondary),
-                SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    'No YouTube Music history found. Listen to songs on YouTube Music to see them here!',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           )
         // 4. Loaded State
         else

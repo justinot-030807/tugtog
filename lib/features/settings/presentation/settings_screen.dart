@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/sources/ytm/yt_music_auth_service.dart';
 import '../../home/presentation/ytm_history_notifier.dart';
 import 'settings_notifier.dart';
+import 'yt_music_login_screen.dart';
 
 /// Settings screen for configuring companion backend URL, connectivity, and info.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -103,8 +105,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          // SECTION 1: Direct YouTube Music Account Login (Optional)
           const Text(
-            'YouTube Music Companion Backend',
+            'YouTube Music Account',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -113,7 +116,118 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Tugtog interfaces with your local FastAPI server to retrieve read-only YouTube Music history and search.',
+            'Log in with your Google account to automatically sync and fetch your real YouTube Music history directly on your phone.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<bool>(
+            future: YtMusicAuthService.isLoggedIn(),
+            builder: (context, snapshot) {
+              final isLoggedIn = snapshot.data == true;
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isLoggedIn ? AppColors.primary.withValues(alpha: 0.4) : Colors.white12,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isLoggedIn ? Icons.account_circle : Icons.no_accounts,
+                      color: isLoggedIn ? AppColors.primary : AppColors.textSecondary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isLoggedIn ? 'Connected to YouTube Music' : 'Not Connected',
+                            style: TextStyle(
+                              color: isLoggedIn ? AppColors.primary : AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isLoggedIn
+                                ? 'Your history is synced directly on this device.'
+                                : 'Optional. You can still search and stream all songs.',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (isLoggedIn)
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.redAccent),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        onPressed: () async {
+                          await YtMusicAuthService.logout();
+                          ref.read(ytmHistoryProvider.notifier).fetchHistory();
+                          setState(() {});
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Logged out of YouTube Music.')),
+                            );
+                          }
+                        },
+                        child: const Text('Log Out', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                      )
+                    else
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        ),
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const YtMusicLoginScreen()),
+                          );
+                          if (result == true) {
+                            setState(() {});
+                          }
+                        },
+                        child: const Text('Log In', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          const Divider(color: AppColors.divider),
+          const SizedBox(height: 16),
+
+          const Text(
+            'YouTube Music Companion Backend (Self-Hosted)',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Optional. Only needed if you run the Python backend on your PC. In-app login and direct search work without any server.',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -275,8 +389,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               return Column(
                 children: [
                   _buildStrategyTile(
+                    id: 'direct_youtube',
+                    title: 'Direct YouTube Audio (Recommended)',
+                    subtitle:
+                        'Streams high-quality audio directly from YouTube. Supports background play, lock screen controls, seek bar, queue, and equalizer.',
+                    badge: 'Recommended',
+                    badgeColor: AppColors.primary,
+                    isSelected: activeStrategy == 'direct_youtube',
+                    onTap: () =>
+                        settingsNotifier.setStreamResolutionStrategy('direct_youtube'),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStrategyTile(
                     id: 'match_audio',
-                    title: 'Audius & Jamendo Matcher (Default)',
+                    title: 'Audius & Jamendo Matcher',
                     subtitle:
                         'Matches the song on free sources (Audius & Jamendo) for background playback, notification controls, and lock screen queueing.',
                     badge: 'Background Audio',
