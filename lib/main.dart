@@ -21,6 +21,45 @@ Future<void> main() async {
     androidShowNotificationBadge: true,
   );
 
+  // Friendly error fallback instead of Flutter's default release grey box
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.orangeAccent, size: 28),
+                    SizedBox(width: 10),
+                    Text(
+                      'View Render Notice',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  details.exceptionAsString(),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   runApp(
     const ProviderScope(
       child: TugtogApp(),

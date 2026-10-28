@@ -44,4 +44,23 @@ void main() {
     expect(find.text('Midnight City'), findsOneWidget);
     expect(find.text('M83'), findsOneWidget);
   });
+
+  testWidgets('Tapping Search tab displays SearchScreen without error',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          discoverProvider.overrideWith(FakeDiscoverNotifier.new),
+          ytmHistoryProvider.overrideWith(FakeYtmHistoryNotifier.new),
+        ],
+        child: const TugtogApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('What do you want to listen to?'), findsOneWidget);
+  });
 }

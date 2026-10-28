@@ -9,7 +9,7 @@ import '../models/player_state.dart';
 
 /// Riverpod Notifier controlling audio playback, background service, queue, and persistence.
 class PlayerController extends Notifier<CurrentPlayerState> {
-  late final AudioPlayer _player;
+  late AudioPlayer _player;
   AndroidEqualizer? _equalizer;
   final List<StreamSubscription> _subscriptions = [];
   List<Track> _queueTracks = [];

@@ -39,11 +39,10 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 
 /// Riverpod Notifier managing playlist CRUD, favorites, and local history.
 class PlaylistNotifier extends Notifier<PlaylistState> {
-  late final AppDatabase _db;
+  AppDatabase get _db => ref.read(databaseProvider);
 
   @override
   PlaylistState build() {
-    _db = ref.watch(databaseProvider);
     Future.microtask(() => loadAll());
     return const PlaylistState();
   }

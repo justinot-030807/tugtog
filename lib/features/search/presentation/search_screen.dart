@@ -171,7 +171,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 24),
       children: [
-        // Group 1: On your phone (Local storage)
+        // Group 1: YouTube Music (Online Catalog - Ad-free)
+        SearchGroupSection(
+          title: 'YouTube Music (No Ads)',
+          icon: Icons.play_circle_fill,
+          iconColor: Colors.redAccent,
+          result: searchState.ytmResults,
+          onTrackTap: _onTrackSelected,
+          onRetry: () => notifier.retrySource('ytm'),
+        ),
+
+        // Group 2: On your phone (Local storage)
         SearchGroupSection(
           title: 'On your phone',
           icon: Icons.phone_android,
@@ -179,16 +189,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           result: searchState.localResults,
           onTrackTap: _onTrackSelected,
           onRetry: () => notifier.retrySource('local'),
-        ),
-
-        // Group 2: YouTube Music
-        SearchGroupSection(
-          title: 'YouTube Music',
-          icon: Icons.play_circle_fill,
-          iconColor: Colors.redAccent,
-          result: searchState.ytmResults,
-          onTrackTap: _onTrackSelected,
-          onRetry: () => notifier.retrySource('ytm'),
         ),
 
         // Group 3: Audius

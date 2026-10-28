@@ -96,13 +96,11 @@ final jamendoSourceProvider = Provider<JamendoSource>((ref) {
 
 /// Notifier managing Discover trending tracks and genre selections.
 class DiscoverNotifier extends Notifier<DiscoverState> {
-  late final AudiusSource _audius;
-  late final JamendoSource _jamendo;
+  AudiusSource get _audius => ref.read(audiusSourceProvider);
+  JamendoSource get _jamendo => ref.read(jamendoSourceProvider);
 
   @override
   DiscoverState build() {
-    _audius = ref.watch(audiusSourceProvider);
-    _jamendo = ref.watch(jamendoSourceProvider);
     Future.microtask(() => fetchDiscoverTracks());
     return const DiscoverState(isLoading: true);
   }

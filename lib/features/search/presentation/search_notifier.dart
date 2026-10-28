@@ -16,18 +16,14 @@ class SearchNotifier extends Notifier<SearchState> {
   static const int _maxRecentSearches = 15;
 
   Timer? _debounceTimer;
-  late final LocalMusicSource _localSource;
-  late final YtMusicSource _ytmSource;
-  late final AudiusSource _audiusSource;
-  late final JamendoSource _jamendoSource;
+
+  LocalMusicSource get _localSource => ref.read(localMusicSourceProvider);
+  YtMusicSource get _ytmSource => ref.read(ytMusicSourceProvider);
+  AudiusSource get _audiusSource => ref.read(audiusSourceProvider);
+  JamendoSource get _jamendoSource => ref.read(jamendoSourceProvider);
 
   @override
   SearchState build() {
-    _localSource = ref.watch(localMusicSourceProvider);
-    _ytmSource = ref.watch(ytMusicSourceProvider);
-    _audiusSource = ref.watch(audiusSourceProvider);
-    _jamendoSource = ref.watch(jamendoSourceProvider);
-
     ref.onDispose(() {
       _debounceTimer?.cancel();
     });
