@@ -150,7 +150,7 @@ class YtMusicSource implements MusicSource {
     try {
       final yt = YoutubeExplode();
       try {
-        final searchResults = await yt.search.search('trending music hits');
+        final searchResults = await yt.search.search('OPM and billboard trending music hits');
         return searchResults.take(limit).map((video) {
           return Track(
             id: 'ytm_${video.id.value}',

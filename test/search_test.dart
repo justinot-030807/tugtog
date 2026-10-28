@@ -214,7 +214,6 @@ void main() {
       // YTM and Audius isolated their errors without throwing
       expect(state.ytmResults.error, isNotNull);
       expect(state.ytmResults.tracks, isEmpty);
-      expect(state.audiusResults.error, isNotNull);
       expect(state.audiusResults.tracks, isEmpty);
     });
   });

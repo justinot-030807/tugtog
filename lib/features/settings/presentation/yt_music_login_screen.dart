@@ -56,11 +56,35 @@ class _YtMusicLoginScreenState extends ConsumerState<YtMusicLoginScreen> {
     if (_isSaving) return;
 
     try {
-      // Query document.cookie via JS
-      final jsCookies = await _controller.runJavaScriptReturningResult('document.cookie');
-      final cookiesString = jsCookies.toString().replaceAll('"', '').trim();
+      final cookieManager = WebViewCookieManager();
+      final musicCookies = await cookieManager.getCookies(domain: Uri.parse('https://music.youtube.com'));
+      final ytCookies = await cookieManager.getCookies(domain: Uri.parse('https://youtube.com'));
+      final googleCookies = await cookieManager.getCookies(domain: Uri.parse('https://google.com'));
 
-      if (cookiesString.contains('SAPISID') || cookiesString.contains('__Secure-3PAPISID')) {
+      final cookiesMap = <String, String>{};
+      for (final c in [...googleCookies, ...ytCookies, ...musicCookies]) {
+        cookiesMap[c.name] = c.value;
+      }
+
+      // Also incorporate any document.cookie values
+      try {
+        final jsCookies = await _controller.runJavaScriptReturningResult('document.cookie');
+        final jsClean = jsCookies.toString().replaceAll('"', '').trim();
+        for (final pair in jsClean.split(';')) {
+          final parts = pair.split('=');
+          if (parts.length == 2) {
+            cookiesMap[parts[0].trim()] = parts[1].trim();
+          }
+        }
+      } catch (_) {}
+
+      final cookiesString = cookiesMap.entries.map((e) => '${e.key}=${e.value}').join('; ');
+
+      if (cookiesString.contains('SAPISID') ||
+          cookiesString.contains('__Secure-3PAPISID') ||
+          cookiesString.contains('LOGIN_INFO') ||
+          cookiesString.contains('SSID') ||
+          cookiesString.contains('HSID')) {
         setState(() => _isSaving = true);
         await YtMusicAuthService.saveCookies(cookiesString);
 

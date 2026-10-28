@@ -275,6 +275,10 @@ class PlayerController extends Notifier<CurrentPlayerState> {
     } else {
       return AudioSource.uri(
         Uri.parse(track.mediaUri ?? ''),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
         tag: mediaItem,
       );
     }
@@ -305,7 +309,7 @@ class PlayerController extends Notifier<CurrentPlayerState> {
       await _player.play();
       _saveCurrentSession();
     } catch (_) {
-      // Audio source loading error
+      state = state.copyWith(isBuffering: false, isPlaying: false);
     }
   }
 

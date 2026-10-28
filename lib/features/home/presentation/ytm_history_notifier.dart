@@ -68,21 +68,26 @@ class YtmHistoryNotifier extends Notifier<YtmHistoryState> {
     return const YtmHistoryState(isLoading: true);
   }
 
-  /// Fetch recently played tracks from YouTube Music companion backend.
+  /// Fetch recently played tracks from YouTube Music, falling back to YouTube trending if not logged in.
   Future<void> fetchHistory() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final source = ref.read(ytMusicSourceProvider);
-      final tracks = await source.getRecentlyPlayed();
+      var tracks = await source.getRecentlyPlayed();
+      if (tracks.isEmpty) {
+        // Fall back to trending YouTube Music hits so the section is always populated
+        tracks = await source.getTrending(limit: 15);
+      }
       state = state.copyWith(
         isLoading: false,
         tracks: tracks,
         clearError: true,
       );
-    } catch (e) {
+    } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        tracks: const [],
+        clearError: true,
       );
     }
   }

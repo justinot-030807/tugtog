@@ -24,7 +24,11 @@ class YtMusicAuthService {
   /// Checks if the user is currently logged in to YouTube Music.
   static Future<bool> isLoggedIn() async {
     final cookies = await getCookies();
-    return cookies != null && cookies.contains('SAPISID');
+    return cookies != null &&
+        (cookies.contains('SAPISID') ||
+            cookies.contains('__Secure-3PAPISID') ||
+            cookies.contains('LOGIN_INFO') ||
+            cookies.contains('SSID'));
   }
 
   /// Clears stored YouTube Music session cookies.
@@ -61,7 +65,11 @@ class YtMusicAuthService {
           'Accept-Language': 'en-US,en;q=0.9',
           'Content-Type': 'application/json',
           'Cookie': cookies,
+          'origin': 'https://music.youtube.com',
+          'referer': 'https://music.youtube.com/',
           'x-origin': 'https://music.youtube.com',
+          'x-youtube-client-name': '67',
+          'x-youtube-client-version': '1.20240101.01.00',
           ...?sapisidAuth != null ? {'Authorization': sapisidAuth} : null,
         },
       ),

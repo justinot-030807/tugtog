@@ -50,15 +50,20 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
         return ResolutionResult.notFound('No playable audio streams found for "${track.title}".');
       }
 
-      final bestAudio = audioStreams.withHighestBitrate();
-      final streamUrl = bestAudio.url.toString();
+      // Prefer AAC/MP4 container streams for maximum Android ExoPlayer compatibility & instant playback
+      final mp4Streams =
+          audioStreams.where((s) => s.container.name.toLowerCase() == 'mp4').toList();
+      final selectedAudio = mp4Streams.isNotEmpty
+          ? mp4Streams.withHighestBitrate()
+          : audioStreams.withHighestBitrate();
+      final streamUrl = selectedAudio.url.toString();
 
       final playableTrack = track.copyWith(
         mediaUri: streamUrl,
         extraMetadata: {
           ...track.extraMetadata,
           'videoId': videoId,
-          'bitrate': bestAudio.bitrate.bitsPerSecond,
+          'bitrate': selectedAudio.bitrate.bitsPerSecond,
         },
       );
 

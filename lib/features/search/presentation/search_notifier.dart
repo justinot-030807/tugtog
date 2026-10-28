@@ -112,12 +112,9 @@ class SearchNotifier extends Notifier<SearchState> {
       state = state.copyWith(
         localResults: SourceSearchResult(tracks: tracks, isLoading: false),
       );
-    } catch (e) {
+    } catch (_) {
       state = state.copyWith(
-        localResults: SourceSearchResult(
-          isLoading: false,
-          error: 'Local search error: $e',
-        ),
+        localResults: const SourceSearchResult(tracks: [], isLoading: false),
       );
     }
   }
@@ -144,12 +141,10 @@ class SearchNotifier extends Notifier<SearchState> {
       state = state.copyWith(
         audiusResults: SourceSearchResult(tracks: tracks, isLoading: false),
       );
-    } catch (e) {
+    } catch (_) {
+      // Graceful fallback for secondary stream source without alarming error box
       state = state.copyWith(
-        audiusResults: SourceSearchResult(
-          isLoading: false,
-          error: 'Audius search error: $e',
-        ),
+        audiusResults: const SourceSearchResult(tracks: [], isLoading: false),
       );
     }
   }
@@ -160,12 +155,10 @@ class SearchNotifier extends Notifier<SearchState> {
       state = state.copyWith(
         jamendoResults: SourceSearchResult(tracks: tracks, isLoading: false),
       );
-    } catch (e) {
+    } catch (_) {
+      // Graceful fallback for secondary stream source without alarming error box
       state = state.copyWith(
-        jamendoResults: SourceSearchResult(
-          isLoading: false,
-          error: 'Jamendo search error: $e',
-        ),
+        jamendoResults: const SourceSearchResult(tracks: [], isLoading: false),
       );
     }
   }
