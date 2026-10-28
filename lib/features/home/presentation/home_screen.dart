@@ -5,6 +5,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/navigation/navigation_provider.dart';
 import '../../../domain/models/playlist.dart';
 import '../../../domain/models/track.dart';
+import '../../library/presentation/downloaded_notifier.dart';
+import '../../library/presentation/downloaded_songs_screen.dart';
 import '../../library/presentation/liked_songs_screen.dart';
 import '../../library/presentation/playlist_detail_screen.dart';
 import '../../library/presentation/playlist_notifier.dart';
@@ -27,6 +29,7 @@ class HomeScreen extends ConsumerWidget {
     final favorites = playlistState.favorites;
     final ytmHistoryState = ref.watch(ytmHistoryProvider);
     final discoverState = ref.watch(discoverProvider);
+    final downloadedState = ref.watch(downloadedProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -96,11 +99,40 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 _buildQuickCard(
                   context,
+                  title: 'Downloaded',
+                  subtitle: '${downloadedState.tracks.length} songs (offline)',
+                  icon: Icons.download_done,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0D5235), Color(0xFF1DB954)],
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DownloadedSongsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildQuickCard(
+                  context,
                   title: 'Local Music',
                   subtitle: 'Device Audio',
                   icon: Icons.phone_android,
                   gradient: const LinearGradient(
                     colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                  ),
+                  onTap: () {
+                    ref.read(navigationProvider.notifier).selectTab(2);
+                  },
+                ),
+                _buildQuickCard(
+                  context,
+                  title: 'Your Playlists',
+                  subtitle: '${playlists.length} playlists',
+                  icon: Icons.queue_music,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFB45309), Color(0xFFF59E0B)],
                   ),
                   onTap: () {
                     ref.read(navigationProvider.notifier).selectTab(2);

@@ -4,6 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/audio_permission_helper.dart';
 import '../../../domain/models/playlist.dart';
 import '../../player/presentation/player_controller.dart';
+import 'downloaded_notifier.dart';
+import 'downloaded_songs_screen.dart';
 import 'liked_songs_screen.dart';
 import 'local_library_notifier.dart';
 import 'playlist_detail_screen.dart';
@@ -210,6 +212,55 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 MaterialPageRoute(
                   builder: (context) => const LikedSongsScreen(),
                 ),
+              );
+            },
+          ),
+
+          // Pinned "Downloaded Songs (Offline)" item
+          Consumer(
+            builder: (context, ref, child) {
+              final downloadedState = ref.watch(downloadedProvider);
+              final count = downloadedState.tracks.length;
+              return ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D5235), Color(0xFF1DB954)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.download_done,
+                      color: Colors.white, size: 26),
+                ),
+                title: const Text(
+                  'Downloaded Songs',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  'Offline • $count ${count == 1 ? "song" : "songs"}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DownloadedSongsScreen(),
+                    ),
+                  );
+                },
               );
             },
           ),

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../domain/models/track.dart';
+import '../../../library/presentation/downloaded_notifier.dart';
 
 /// List tile representing a search result track with unified artwork, metadata, and source indicator.
-class SearchTrackTile extends StatelessWidget {
+class SearchTrackTile extends ConsumerWidget {
   final Track track;
   final VoidCallback onTap;
 
@@ -15,7 +17,10 @@ class SearchTrackTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDownloaded =
+        ref.watch(downloadedProvider).tracks.any((t) => t.id == track.id);
+    final isOnline = track.sourceType != AudioSourceType.local;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
@@ -79,6 +84,46 @@ class SearchTrackTile extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
+
+            // Download indicator or action button
+            if (isDownloaded)
+              const Padding(
+                padding: EdgeInsets.only(left: 10.0),
+                child: Icon(Icons.download_done, color: AppColors.primary, size: 18),
+              )
+            else if (isOnline)
+              Padding(
+                padding: const EdgeInsets.only(left: 6.0),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_circle_down_outlined,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
+                  tooltip: 'Download for offline play',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () async {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Downloading "${track.title}" for offline play...'),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                    final res = await ref.read(downloadedProvider.notifier).downloadTrack(track);
+                    if (context.mounted && res != null) {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Saved "${track.title}" to Downloaded Songs!'),
+                          backgroundColor: AppColors.primary,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
           ],
         ),
       ),

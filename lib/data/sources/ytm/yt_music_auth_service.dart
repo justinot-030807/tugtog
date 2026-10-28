@@ -40,7 +40,7 @@ class YtMusicAuthService {
 
   /// Generates the SAPISIDHASH Authorization header from the SAPISID cookie.
   static String? generateSapisidHash(String cookies, {String origin = 'https://music.youtube.com'}) {
-    final sapisidRegex = RegExp(r'(?:^|;\s*)(?:SAPISID|__Secure-3PAPISID)=([^;]+)');
+    final sapisidRegex = RegExp(r'(?:^|;\s*)(?:SAPISID|__Secure-3PAPISID)=([^;\s]+)');
     final match = sapisidRegex.firstMatch(cookies);
     if (match == null) return null;
 
@@ -68,6 +68,7 @@ class YtMusicAuthService {
           'origin': 'https://music.youtube.com',
           'referer': 'https://music.youtube.com/',
           'x-origin': 'https://music.youtube.com',
+          'x-goog-authuser': '0',
           'x-youtube-client-name': '67',
           'x-youtube-client-version': '1.20240101.01.00',
           ...?sapisidAuth != null ? {'Authorization': sapisidAuth} : null,
@@ -98,67 +99,83 @@ class YtMusicAuthService {
     return [];
   }
 
-  /// Parses YouTube Music browse response JSON into unified Track items.
+  /// Parses YouTube Music browse response JSON into unified Track items using recursive traversal.
   static List<Track> _parseHistoryResponse(Map<String, dynamic> data) {
     final List<Track> tracks = [];
-    try {
-      final tabs = data['contents']?['singleColumnBrowseResultsRenderer']?['tabs'] as List?;
-      if (tabs == null || tabs.isEmpty) return [];
+    final Set<String> seenVideoIds = {};
 
-      final sections = tabs.first['tabRenderer']?['content']?['sectionListRenderer']?['contents'] as List?;
-      if (sections == null) return [];
-
-      for (final section in sections) {
-        final items = section['musicShelfRenderer']?['contents'] as List?;
-        if (items == null) continue;
-
-        for (final item in items) {
-          final renderer = item['musicResponsiveListItemRenderer'];
-          if (renderer == null) continue;
-
-          final videoId = renderer['playlistItemData']?['videoId'] as String?;
-          if (videoId == null || videoId.isEmpty) continue;
-
-          final flexCols = renderer['flexColumns'] as List?;
-          String title = 'Unknown Title';
-          String artist = 'YouTube Music';
-
-          if (flexCols != null && flexCols.isNotEmpty) {
-            final titleRuns = flexCols[0]?['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
-            if (titleRuns != null && titleRuns.isNotEmpty) {
-              title = (titleRuns.first['text'] as String?) ?? title;
-            }
-
-            if (flexCols.length > 1) {
-              final artistRuns = flexCols[1]?['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
-              if (artistRuns != null && artistRuns.isNotEmpty) {
-                artist = (artistRuns.first['text'] as String?) ?? artist;
-              }
+    void extractRenderers(dynamic node) {
+      if (node is Map<String, dynamic>) {
+        if (node.containsKey('musicResponsiveListItemRenderer')) {
+          final renderer = node['musicResponsiveListItemRenderer'];
+          if (renderer is Map<String, dynamic>) {
+            final track = _buildTrackFromRenderer(renderer);
+            if (track != null && !seenVideoIds.contains(track.id)) {
+              seenVideoIds.add(track.id);
+              tracks.add(track);
             }
           }
-
-          String? artworkUrl;
-          final thumbnails = renderer['thumbnail']?['musicThumbnailRenderer']?['thumbnail']?['thumbnails'] as List?;
-          if (thumbnails != null && thumbnails.isNotEmpty) {
-            artworkUrl = thumbnails.last['url'] as String?;
+        } else {
+          for (final val in node.values) {
+            extractRenderers(val);
           }
-
-          tracks.add(
-            Track(
-              id: 'ytm_$videoId',
-              title: title,
-              artist: artist,
-              artworkUrl: artworkUrl,
-              sourceType: AudioSourceType.youtubeMusic,
-              extraMetadata: {
-                'videoId': videoId,
-                'source': 'yt_music_in_app',
-              },
-            ),
-          );
+        }
+      } else if (node is List) {
+        for (final item in node) {
+          extractRenderers(item);
         }
       }
+    }
+
+    try {
+      extractRenderers(data);
     } catch (_) {}
+
     return tracks;
+  }
+
+  static Track? _buildTrackFromRenderer(Map<String, dynamic> renderer) {
+    try {
+      final videoId = renderer['playlistItemData']?['videoId'] as String?;
+      if (videoId == null || videoId.isEmpty) return null;
+
+      final flexCols = renderer['flexColumns'] as List?;
+      String title = 'Unknown Title';
+      String artist = 'YouTube Music';
+
+      if (flexCols != null && flexCols.isNotEmpty) {
+        final titleRuns = flexCols[0]?['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
+        if (titleRuns != null && titleRuns.isNotEmpty) {
+          title = (titleRuns.first['text'] as String?) ?? title;
+        }
+
+        if (flexCols.length > 1) {
+          final artistRuns = flexCols[1]?['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
+          if (artistRuns != null && artistRuns.isNotEmpty) {
+            artist = (artistRuns.first['text'] as String?) ?? artist;
+          }
+        }
+      }
+
+      String? artworkUrl;
+      final thumbnails = renderer['thumbnail']?['musicThumbnailRenderer']?['thumbnail']?['thumbnails'] as List?;
+      if (thumbnails != null && thumbnails.isNotEmpty) {
+        artworkUrl = thumbnails.last['url'] as String?;
+      }
+
+      return Track(
+        id: 'ytm_$videoId',
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        sourceType: AudioSourceType.youtubeMusic,
+        extraMetadata: {
+          'videoId': videoId,
+          'source': 'yt_music_in_app',
+        },
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }

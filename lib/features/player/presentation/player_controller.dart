@@ -189,6 +189,16 @@ class PlayerController extends Notifier<CurrentPlayerState> {
       }),
     );
 
+    // 1b. Catch playback errors and clear buffering spinner
+    _subscriptions.add(
+      _player.playbackEventStream.listen(
+        (_) {},
+        onError: (Object e, StackTrace st) {
+          state = state.copyWith(isBuffering: false, isPlaying: false);
+        },
+      ),
+    );
+
     // 2. Playback Position
     _subscriptions.add(
       _player.positionStream.listen((pos) {
@@ -267,14 +277,20 @@ class PlayerController extends Notifier<CurrentPlayerState> {
       extras: track.extraMetadata,
     );
 
-    if (track.sourceType == AudioSourceType.local && track.mediaUri != null) {
+    final uriStr = track.mediaUri ?? '';
+    final isRemote =
+        uriStr.startsWith('http://') || uriStr.startsWith('https://');
+
+    if (!isRemote && uriStr.isNotEmpty) {
+      final localPath =
+          uriStr.startsWith('file://') ? uriStr.substring(7) : uriStr;
       return AudioSource.file(
-        track.mediaUri!,
+        localPath,
         tag: mediaItem,
       );
     } else {
       return AudioSource.uri(
-        Uri.parse(track.mediaUri ?? ''),
+        Uri.parse(uriStr),
         headers: {
           'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

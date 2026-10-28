@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import '../../../core/services/track_cache_service.dart';
+import '../../library/presentation/downloaded_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -432,6 +434,125 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(color: AppColors.divider),
           const SizedBox(height: 16),
 
+          // SECTION: Offline Mode & Cache Management (Spotify Premium Style)
+          const Text(
+            'Offline Mode & Storage Cache',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Save streamed tracks directly to your phone for 100% buffer-free offline listening, just like Spotify Premium.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Consumer(
+            builder: (context, ref, child) {
+              final settings = ref.watch(settingsProvider);
+              final notifier = ref.read(settingsProvider.notifier);
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      activeTrackColor: AppColors.primary,
+                      title: const Text(
+                        'Auto-Download / Cache Online Music',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Automatically saves YouTube Music tracks to offline storage as you play them.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      value: settings.autoDownloadCache,
+                      onChanged: (val) => notifier.setAutoDownloadCache(val),
+                    ),
+                    const Divider(color: Colors.white10, height: 1),
+                    SwitchListTile(
+                      activeTrackColor: AppColors.primary,
+                      title: const Text(
+                        'Offline Mode Only',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Only play downloaded songs to save cellular data when you have no Wi-Fi.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      value: settings.offlineModeOnly,
+                      onChanged: (val) => notifier.setOfflineModeOnly(val),
+                    ),
+                    const Divider(color: Colors.white10, height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.sd_storage, color: AppColors.primary),
+                      title: const Text(
+                        'Cached Offline Music',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${TrackCacheService.formatBytes(settings.cachedSizeBytes)} used',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      trailing: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.redAccent),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        onPressed: settings.cachedSizeBytes == 0
+                            ? null
+                            : () => _confirmClearCache(context, ref),
+                        child: const Text(
+                          'Clear Cache',
+                          style: TextStyle(color: Colors.redAccent, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 28),
+          const Divider(color: AppColors.divider),
+          const SizedBox(height: 16),
+
           const Text(
             'About Tugtog',
             style: TextStyle(
@@ -561,6 +682,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmClearCache(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text('Clear Music Cache?'),
+        content: const Text(
+          'This will delete all downloaded songs from device storage to free up space.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(settingsProvider.notifier).clearAllCache();
+              await ref.read(downloadedProvider.notifier).loadDownloadedTracks();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Offline music cache cleared successfully.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            child: const Text('Clear'),
+          ),
+        ],
       ),
     );
   }

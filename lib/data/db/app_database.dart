@@ -103,6 +103,29 @@ class AppDatabase {
             updated_at INTEGER NOT NULL
           )
         ''');
+
+        // 6. Downloaded & Cached Offline Tracks (Spotify Premium style)
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS downloaded_tracks (
+            track_id TEXT PRIMARY KEY,
+            file_path TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            track_json TEXT NOT NULL,
+            downloaded_at INTEGER NOT NULL
+          )
+        ''');
+      },
+      onOpen: (db) async {
+        // Ensure downloaded_tracks table exists for legacy DB instances
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS downloaded_tracks (
+            track_id TEXT PRIMARY KEY,
+            file_path TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            track_json TEXT NOT NULL,
+            downloaded_at INTEGER NOT NULL
+          )
+        ''');
       },
     );
   }
@@ -378,5 +401,105 @@ class AppDatabase {
     } catch (_) {
       return null;
     }
+  }
+
+  // ==========================================
+  // DOWNLOADED & CACHED OFFLINE TRACKS (SPOTIFY PREMIUM STYLE)
+  // ==========================================
+
+  /// Save or update a downloaded track record in SQLite.
+  Future<void> saveDownloadedTrack({
+    required Track track,
+    required String filePath,
+    required int fileSize,
+  }) async {
+    final db = await database;
+    if (db == null) return;
+    await db.insert(
+      'downloaded_tracks',
+      {
+        'track_id': track.id,
+        'file_path': filePath,
+        'file_size': fileSize,
+        'track_json': jsonEncode(track.toJson()),
+        'downloaded_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Retrieve all downloaded/cached offline tracks sorted by download date.
+  Future<List<Track>> getDownloadedTracks() async {
+    final db = await database;
+    if (db == null) return [];
+    final results = await db.query(
+      'downloaded_tracks',
+      orderBy: 'downloaded_at DESC',
+    );
+
+    return results.map((row) {
+      final jsonMap =
+          jsonDecode(row['track_json'] as String) as Map<String, dynamic>;
+      final track = Track.fromJson(jsonMap);
+      return track.copyWith(mediaUri: row['file_path'] as String?);
+    }).toList();
+  }
+
+  /// Check whether a track is recorded as downloaded.
+  Future<bool> isTrackDownloaded(String trackId) async {
+    final db = await database;
+    if (db == null) return false;
+    final results = await db.query(
+      'downloaded_tracks',
+      columns: ['track_id'],
+      where: 'track_id = ?',
+      whereArgs: [trackId],
+      limit: 1,
+    );
+    return results.isNotEmpty;
+  }
+
+  /// Get the local file path of a downloaded track.
+  Future<String?> getDownloadedTrackPath(String trackId) async {
+    final db = await database;
+    if (db == null) return null;
+    final results = await db.query(
+      'downloaded_tracks',
+      columns: ['file_path'],
+      where: 'track_id = ?',
+      whereArgs: [trackId],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return results.first['file_path'] as String?;
+  }
+
+  /// Remove a track from downloaded records.
+  Future<void> removeDownloadedTrack(String trackId) async {
+    final db = await database;
+    if (db == null) return;
+    await db.delete(
+      'downloaded_tracks',
+      where: 'track_id = ?',
+      whereArgs: [trackId],
+    );
+  }
+
+  /// Clear all downloaded track records.
+  Future<void> clearAllDownloadedTracks() async {
+    final db = await database;
+    if (db == null) return;
+    await db.delete('downloaded_tracks');
+  }
+
+  /// Calculate total file size of all downloaded songs in bytes.
+  Future<int> getTotalDownloadedSize() async {
+    final db = await database;
+    if (db == null) return 0;
+    final results = await db.rawQuery(
+      'SELECT SUM(file_size) as total_size FROM downloaded_tracks',
+    );
+    if (results.isEmpty) return 0;
+    return (results.first['total_size'] as int?) ?? 0;
   }
 }
