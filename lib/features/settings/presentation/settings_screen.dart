@@ -219,144 +219,164 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(color: AppColors.divider),
           const SizedBox(height: 16),
 
-          const Text(
-            'YouTube Music Companion Backend (Self-Hosted)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Optional. Only needed if you run the Python backend on your PC. In-app login and direct search work without any server.',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // URL Input field
-          TextField(
-            controller: _urlController,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-            cursorColor: AppColors.primary,
-            decoration: InputDecoration(
-              labelText: 'Backend Base URL',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
-              hintText: 'http://192.168.1.X:8000',
-              hintStyle: const TextStyle(color: AppColors.textSecondary),
-              filled: true,
-              fillColor: AppColors.surfaceElevated,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.dns_outlined, color: AppColors.textSecondary, size: 20),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary),
+              title: const Text(
+                'Self-Hosted Companion Server (Optional)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
+              subtitle: const Text(
+                'Not needed. Tugtog runs 100% standalone directly on your phone.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              children: [
+                const SizedBox(height: 12),
+                const Text(
+                  'Only needed if you run the Python backend on your PC. In-app login and direct search work without any server.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
 
-          // Presets row
-          Row(
-            children: [
-              _buildPresetChip('Emulator (10.0.2.2)', 'http://10.0.2.2:8000'),
-              const SizedBox(width: 8),
-              _buildPresetChip('Default LAN IP', 'http://192.168.1.100:8000'),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Action buttons: Test & Save
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _isTesting ? null : _testConnection,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.divider),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
+                // URL Input field
+                TextField(
+                  controller: _urlController,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    labelText: 'Backend Base URL',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    hintText: 'http://192.168.1.X:8000',
+                    hintStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.surfaceElevated,
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  child: _isTesting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primary,
+                ),
+                const SizedBox(height: 12),
+
+                // Presets row
+                Row(
+                  children: [
+                    _buildPresetChip('Emulator (10.0.2.2)', 'http://10.0.2.2:8000'),
+                    const SizedBox(width: 8),
+                    _buildPresetChip('Default LAN IP', 'http://192.168.1.100:8000'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Action buttons: Test & Save
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isTesting ? null : _testConnection,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.divider),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        )
-                      : const Text(
-                          'Test Connection',
-                          style: TextStyle(color: AppColors.textPrimary),
                         ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _saveUrl,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Save Settings',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Test results message box
-          if (_testResult != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _testSuccess
-                    ? Colors.green.withValues(alpha: 0.15)
-                    : Colors.redAccent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _testSuccess ? Colors.green : Colors.redAccent,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _testSuccess ? Icons.check_circle : Icons.error_outline,
-                    color: _testSuccess ? Colors.green : Colors.redAccent,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _testResult!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _testSuccess ? Colors.green : Colors.redAccent,
+                        child: _isTesting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              )
+                            : const Text(
+                                'Test Connection',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _saveUrl,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save Settings',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Test results message box
+                if (_testResult != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _testSuccess
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : Colors.redAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _testSuccess ? Colors.green : Colors.redAccent,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _testSuccess ? Icons.check_circle : Icons.error_outline,
+                          color: _testSuccess ? Colors.green : Colors.redAccent,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _testResult!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _testSuccess ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
           const SizedBox(height: 28),
 
           const Divider(color: AppColors.divider),

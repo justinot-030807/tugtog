@@ -104,9 +104,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         ),
         title: Column(
           children: [
-            const Text(
-              'PLAYING FROM PLAYLIST',
-              style: TextStyle(
+            Text(
+              track?.extraMetadata['isDownloaded'] == true
+                  ? 'PLAYING FROM DOWNLOADS'
+                  : (track?.sourceType == AudioSourceType.youtubeMusic
+                      ? 'PLAYING FROM YOUTUBE MUSIC'
+                      : 'PLAYING FROM PLAYLIST'),
+              style: const TextStyle(
                 fontSize: 10,
                 letterSpacing: 1.5,
                 fontWeight: FontWeight.w600,
@@ -115,7 +119,16 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              track?.album ?? 'Local Storage',
+              track?.album ??
+                  (track?.extraMetadata['isDownloaded'] == true
+                      ? 'Downloaded (Offline)'
+                      : (track?.sourceType == AudioSourceType.youtubeMusic
+                          ? 'YouTube Music (Online)'
+                          : (track?.sourceType == AudioSourceType.audius
+                              ? 'Audius'
+                              : (track?.sourceType == AudioSourceType.jamendo
+                                  ? 'Jamendo'
+                                  : 'On Your Phone')))),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
