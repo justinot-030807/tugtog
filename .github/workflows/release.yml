@@ -50,6 +50,14 @@ jobs:
             fi
           done
 
+      - name: Ensure .env exists for asset bundling
+        run: |
+          if [ ! -f .env ]; then
+            echo "Creating .env asset fallback"
+            echo "JAMENDO_CLIENT_ID=56d30c95" > .env
+            echo "AUDIUS_APP_NAME=tugtog" >> .env
+          fi
+
       - name: Build Android Release APK
         run: flutter build apk --release
 

@@ -44,9 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Environment secrets
-.env
-*.env
+# Environment secrets (browser.json is private)
 
 # Backend secrets & Python artifacts
 backend/browser.json
