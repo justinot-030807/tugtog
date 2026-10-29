@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'core/theme/app_theme.dart';
-import 'features/navigation/presentation/main_scaffold.dart';
+import 'features/splash/presentation/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,7 +69,8 @@ Future<void> main() async {
 
 /// Root application widget for Tugtog.
 class TugtogApp extends StatelessWidget {
-  const TugtogApp({super.key});
+  final Widget? home;
+  const TugtogApp({super.key, this.home});
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +78,7 @@ class TugtogApp extends StatelessWidget {
       title: 'Tugtog',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const MainScaffold(),
+      home: home ?? const SplashScreen(),
     );
   }
 }

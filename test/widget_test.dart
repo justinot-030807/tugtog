@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tugtog/features/home/presentation/discover_notifier.dart';
 import 'package:tugtog/features/home/presentation/ytm_history_notifier.dart';
+import 'package:tugtog/features/navigation/presentation/main_scaffold.dart';
 import 'package:tugtog/main.dart';
 
 class FakeDiscoverNotifier extends DiscoverNotifier {
@@ -28,7 +29,7 @@ void main() {
           discoverProvider.overrideWith(FakeDiscoverNotifier.new),
           ytmHistoryProvider.overrideWith(FakeYtmHistoryNotifier.new),
         ],
-        child: const TugtogApp(),
+        child: const TugtogApp(home: MainScaffold()),
       ),
     );
 
@@ -53,7 +54,7 @@ void main() {
           discoverProvider.overrideWith(FakeDiscoverNotifier.new),
           ytmHistoryProvider.overrideWith(FakeYtmHistoryNotifier.new),
         ],
-        child: const TugtogApp(),
+        child: const TugtogApp(home: MainScaffold()),
       ),
     );
     await tester.pumpAndSettle();

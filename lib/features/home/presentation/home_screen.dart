@@ -293,7 +293,7 @@ class HomeScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Discover',
+                  'Explore Charts & Genres',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -303,7 +303,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Trending free music from Audius & Jamendo',
+                  'Top YouTube Music Hits & Filipino Charts',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -430,9 +430,9 @@ class HomeScreen extends ConsumerWidget {
     List<Track> queue,
     int index,
   ) {
-    final isAudius = track.sourceType == AudioSourceType.audius;
-    final badgeColor = isAudius ? const Color(0xFFCC00FF) : const Color(0xFFFF9900);
-    final badgeLabel = isAudius ? 'Audius' : 'Jamendo';
+    final isYtm = track.sourceType == AudioSourceType.youtubeMusic;
+    final badgeColor = isYtm ? Colors.redAccent : AppColors.primary;
+    final badgeLabel = isYtm ? 'YouTube Music' : 'Tugtog';
 
     return Container(
       width: 135,
@@ -440,8 +440,15 @@ class HomeScreen extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () {
-          // Play directly via PlayerController and just_audio URL stream!
-          ref.read(playerControllerProvider.notifier).playSongList(queue, index);
+          if (track.sourceType == AudioSourceType.youtubeMusic) {
+            ref.read(ytStreamResolverProvider).resolveAndPlay(
+                  context: context,
+                  ref: ref,
+                  track: track,
+                );
+          } else {
+            ref.read(playerControllerProvider.notifier).playSongList(queue, index);
+          }
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

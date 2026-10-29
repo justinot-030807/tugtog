@@ -1,58 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/sources/audius/audius_source.dart';
 import '../../../data/sources/jamendo/jamendo_source.dart';
+import '../../../data/sources/ytm/ytmusic_source.dart';
 import '../../../domain/models/track.dart';
+import 'ytm_history_notifier.dart';
 
-/// Available genre filters for the Discover section.
+/// Available genre / chart filters for the Discover section on Home (SimpMusic Engine).
 class DiscoverGenres {
   static const List<String> list = [
-    'Pop',
-    'OPM / Filipino',
-    'Rock',
-    'Chill',
+    'OPM Hits',
+    'Billboard Top',
+    'Chill & Acoustic',
+    'Pinoy Rock',
+    'P-Pop',
     'Hip-Hop',
-    'Electronic',
   ];
 
-  /// Map UI genre label to Jamendo tags
-  static String mapToJamendoTag(String genre) {
+  /// Map UI genre label to YouTube Music search query
+  static String mapToSearchQuery(String genre) {
     switch (genre) {
-      case 'Pop':
-        return 'pop';
-      case 'OPM / Filipino':
-        return 'acoustic';
-      case 'Rock':
-        return 'rock';
-      case 'Chill':
-        return 'chillout';
+      case 'OPM Hits':
+        return 'trending opm music philippines';
+      case 'Billboard Top':
+        return 'billboard hot 100 music hits';
+      case 'Chill & Acoustic':
+        return 'acoustic opm chill songs';
+      case 'Pinoy Rock':
+        return 'classic opm rock hits';
+      case 'P-Pop':
+        return 'ppop hits bini sb19 alamat';
       case 'Hip-Hop':
-        return 'hiphop';
-      case 'Electronic':
-        return 'electronic';
+        return 'pinoy hiphop rap hits';
       default:
-        return 'pop';
+        return 'trending opm hits';
     }
   }
 
-  /// Map UI genre label to Audius genres
-  static String mapToAudiusGenre(String genre) {
-    switch (genre) {
-      case 'Pop':
-        return 'Pop';
-      case 'OPM / Filipino':
-        return 'Acoustic';
-      case 'Rock':
-        return 'Rock';
-      case 'Chill':
-        return 'Ambient';
-      case 'Hip-Hop':
-        return 'Hip-Hop/Rap';
-      case 'Electronic':
-        return 'Electronic';
-      default:
-        return 'Pop';
-    }
-  }
+  /// Backward-compatibility helpers for tests
+  static String mapToJamendoTag(String genre) => 'pop';
+  static String mapToAudiusGenre(String genre) => 'Pop';
 }
 
 /// State for the Discover section on Home.
@@ -64,7 +50,7 @@ class DiscoverState {
 
   const DiscoverState({
     this.tracks = const [],
-    this.selectedGenre = 'Pop',
+    this.selectedGenre = 'OPM Hits',
     this.isLoading = false,
     this.errorMessage,
   });
@@ -84,20 +70,19 @@ class DiscoverState {
   }
 }
 
-/// Provider for AudiusSource.
+/// Provider for AudiusSource (kept for test compatibility).
 final audiusSourceProvider = Provider<AudiusSource>((ref) {
   return AudiusSource();
 });
 
-/// Provider for JamendoSource.
+/// Provider for JamendoSource (kept for test compatibility).
 final jamendoSourceProvider = Provider<JamendoSource>((ref) {
   return JamendoSource();
 });
 
-/// Notifier managing Discover trending tracks and genre selections.
+/// Notifier managing SimpMusic YouTube Music trending charts and categories.
 class DiscoverNotifier extends Notifier<DiscoverState> {
-  AudiusSource get _audius => ref.read(audiusSourceProvider);
-  JamendoSource get _jamendo => ref.read(jamendoSourceProvider);
+  YtMusicSource get _ytm => ref.read(ytMusicSourceProvider);
 
   @override
   DiscoverState build() {
@@ -105,53 +90,37 @@ class DiscoverNotifier extends Notifier<DiscoverState> {
     return const DiscoverState(isLoading: true);
   }
 
-  /// Select a genre and load trending tracks.
+  /// Select a genre/chart and load YouTube Music tracks.
   Future<void> selectGenre(String genre) async {
     if (state.selectedGenre == genre && state.tracks.isNotEmpty) return;
     state = state.copyWith(selectedGenre: genre, isLoading: true);
     await fetchDiscoverTracks(genre: genre);
   }
 
-  /// Fetch trending tracks across Audius and Jamendo.
+  /// Fetch trending YouTube Music tracks for the selected category.
   Future<void> fetchDiscoverTracks({String? genre}) async {
     final activeGenre = genre ?? state.selectedGenre;
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final audiusGenre = DiscoverGenres.mapToAudiusGenre(activeGenre);
-      final jamendoTag = DiscoverGenres.mapToJamendoTag(activeGenre);
-
-      final audiusFuture = _audius.getTrending(genre: audiusGenre, limit: 12);
-      final jamendoFuture = _jamendo.getTrending(genre: jamendoTag, limit: 12);
-
-      final results = await Future.wait([audiusFuture, jamendoFuture]);
-      final audiusTracks = results[0];
-      final jamendoTracks = results[1];
-
-      // Interleave results from both sources for rich variety
-      final combined = <Track>[];
-      final maxLen = audiusTracks.length > jamendoTracks.length
-          ? audiusTracks.length
-          : jamendoTracks.length;
-
-      for (var i = 0; i < maxLen; i++) {
-        if (i < audiusTracks.length) combined.add(audiusTracks[i]);
-        if (i < jamendoTracks.length) combined.add(jamendoTracks[i]);
-      }
+      final query = DiscoverGenres.mapToSearchQuery(activeGenre);
+      final tracks = await _ytm.search(query);
 
       state = state.copyWith(
         isLoading: false,
-        tracks: combined,
+        tracks: tracks,
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Failed to discover music: $e',
+        errorMessage: 'Unable to load YouTube Music charts. Please check your connection.',
       );
     }
   }
 }
 
-/// Global provider for Discover section state.
+/// Global provider for Discover section on Home.
 final discoverProvider =
-    NotifierProvider<DiscoverNotifier, DiscoverState>(DiscoverNotifier.new);
+    NotifierProvider<DiscoverNotifier, DiscoverState>(
+  DiscoverNotifier.new,
+);

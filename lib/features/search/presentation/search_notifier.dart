@@ -84,7 +84,7 @@ class SearchNotifier extends Notifier<SearchState> {
     _debounceTimer?.cancel();
     addRecentSearch(query);
 
-    // Set initial loading state for all 4 sources
+    // Set initial loading state for all sources
     state = state.copyWith(
       query: query,
       isDebouncing: false,
@@ -95,7 +95,7 @@ class SearchNotifier extends Notifier<SearchState> {
       jamendoResults: const SourceSearchResult(isLoading: true),
     );
 
-    // Run all 4 search queries concurrently with independent error isolation
+    // Run search queries concurrently with independent error isolation
     await Future.wait([
       _searchLocal(query),
       _searchYtm(query),

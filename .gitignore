@@ -53,3 +53,9 @@ backend/__pycache__/
 __pycache__/
 backend/venv/
 .venv/
+
+# Motion graphics & Node
+node_modules/
+motion_graphics/node_modules/
+motion_graphics/out/
+

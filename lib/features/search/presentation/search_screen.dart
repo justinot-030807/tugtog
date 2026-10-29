@@ -190,26 +190,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onTrackTap: _onTrackSelected,
           onRetry: () => notifier.retrySource('local'),
         ),
-
-        // Group 3: Audius
-        SearchGroupSection(
-          title: 'Audius',
-          icon: Icons.album,
-          iconColor: const Color(0xFFCC00FF),
-          result: searchState.audiusResults,
-          onTrackTap: _onTrackSelected,
-          onRetry: () => notifier.retrySource('audius'),
-        ),
-
-        // Group 4: Jamendo
-        SearchGroupSection(
-          title: 'Jamendo',
-          icon: Icons.music_note,
-          iconColor: const Color(0xFFFF9900),
-          result: searchState.jamendoResults,
-          onTrackTap: _onTrackSelected,
-          onRetry: () => notifier.retrySource('jamendo'),
-        ),
       ],
     );
   }

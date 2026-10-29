@@ -18,78 +18,90 @@ class LocalMusicSource implements MusicSource {
   @override
   String get displayName => 'Local Storage';
 
-  /// Query all local audio files from MediaStore via on_audio_query.
+  /// Query all local audio files from MediaStore via on_audio_query safely.
   Future<List<Song>> queryAllSongs() async {
-    final songModels = await _audioQuery.querySongs(
-      sortType: SongSortType.TITLE,
-      orderType: OrderType.ASC_OR_SMALLER,
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-    );
-
-    return songModels.map((item) {
-      final mediaUri = (item.uri != null && item.uri!.isNotEmpty)
-          ? item.uri!
-          : (item.id > 0
-              ? 'content://media/external/audio/media/${item.id}'
-              : item.data);
-
-      return Song(
-        id: item.id,
-        title: item.title,
-        artist: (item.artist == null || item.artist == '<unknown>')
-            ? 'Unknown Artist'
-            : item.artist!,
-        album: item.album,
-        duration: item.duration != null
-            ? Duration(milliseconds: item.duration!)
-            : null,
-        albumId: item.albumId,
-        data: mediaUri,
-        displayName: item.displayName,
-        size: item.size,
+    try {
+      final songModels = await _audioQuery.querySongs(
+        sortType: SongSortType.TITLE,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
       );
-    }).toList();
+
+      return songModels.map((item) {
+        final mediaUri = (item.uri != null && item.uri!.isNotEmpty)
+            ? item.uri!
+            : (item.id > 0
+                ? 'content://media/external/audio/media/${item.id}'
+                : item.data);
+
+        return Song(
+          id: item.id,
+          title: item.title,
+          artist: (item.artist == null || item.artist == '<unknown>')
+              ? 'Unknown Artist'
+              : item.artist!,
+          album: item.album,
+          duration: item.duration != null
+              ? Duration(milliseconds: item.duration!)
+              : null,
+          albumId: item.albumId,
+          data: mediaUri,
+          displayName: item.displayName,
+          size: item.size,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
-  /// Query all local music albums.
+  /// Query all local music albums safely.
   Future<List<LocalAlbum>> queryAllAlbums() async {
-    final albumModels = await _audioQuery.queryAlbums(
-      sortType: AlbumSortType.ALBUM,
-      orderType: OrderType.ASC_OR_SMALLER,
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-    );
-
-    return albumModels.map((item) {
-      return LocalAlbum(
-        id: item.id,
-        album: item.album,
-        artist: (item.artist == null || item.artist == '<unknown>')
-            ? 'Unknown Artist'
-            : item.artist!,
-        numOfSongs: item.numOfSongs,
+    try {
+      final albumModels = await _audioQuery.queryAlbums(
+        sortType: AlbumSortType.ALBUM,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
       );
-    }).toList();
+
+      return albumModels.map((item) {
+        return LocalAlbum(
+          id: item.id,
+          album: item.album,
+          artist: (item.artist == null || item.artist == '<unknown>')
+              ? 'Unknown Artist'
+              : item.artist!,
+          numOfSongs: item.numOfSongs,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
-  /// Query all local music artists.
+  /// Query all local music artists safely.
   Future<List<LocalArtist>> queryAllArtists() async {
-    final artistModels = await _audioQuery.queryArtists(
-      sortType: ArtistSortType.ARTIST,
-      orderType: OrderType.ASC_OR_SMALLER,
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-    );
-
-    return artistModels.map((item) {
-      return LocalArtist(
-        id: item.id,
-        artist: item.artist,
-        numberOfAlbums: item.numberOfAlbums,
-        numberOfTracks: item.numberOfTracks,
+    try {
+      final artistModels = await _audioQuery.queryArtists(
+        sortType: ArtistSortType.ARTIST,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
       );
-    }).toList();
+
+      return artistModels.map((item) {
+        return LocalArtist(
+          id: item.id,
+          artist: item.artist,
+          numberOfAlbums: item.numberOfAlbums,
+          numberOfTracks: item.numberOfTracks,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   @override
