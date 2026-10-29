@@ -276,10 +276,16 @@ class PlayerController extends Notifier<CurrentPlayerState> {
     );
 
     final uriStr = track.mediaUri ?? '';
+    final isContentUri = uriStr.startsWith('content://');
     final isRemote =
         uriStr.startsWith('http://') || uriStr.startsWith('https://');
 
-    if (!isRemote && uriStr.isNotEmpty) {
+    if (isContentUri || isRemote) {
+      return AudioSource.uri(
+        Uri.parse(uriStr),
+        tag: mediaItem,
+      );
+    } else if (uriStr.isNotEmpty) {
       final localPath =
           uriStr.startsWith('file://') ? uriStr.substring(7) : uriStr;
       return AudioSource.file(

@@ -74,7 +74,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _isTesting = false;
         _testSuccess = false;
         _testResult =
-            'Connection failed. Ensure FastAPI server is running on $testUrl.';
+            'No server found at $testUrl. Normal ito kung walang Python server sa PC mo. Standalone ang Tugtog at hindi ito kailangan!';
       });
     }
   }

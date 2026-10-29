@@ -28,6 +28,12 @@ class LocalMusicSource implements MusicSource {
     );
 
     return songModels.map((item) {
+      final mediaUri = (item.uri != null && item.uri!.isNotEmpty)
+          ? item.uri!
+          : (item.id > 0
+              ? 'content://media/external/audio/media/${item.id}'
+              : item.data);
+
       return Song(
         id: item.id,
         title: item.title,
@@ -39,7 +45,7 @@ class LocalMusicSource implements MusicSource {
             ? Duration(milliseconds: item.duration!)
             : null,
         albumId: item.albumId,
-        data: item.data,
+        data: mediaUri,
         displayName: item.displayName,
         size: item.size,
       );
