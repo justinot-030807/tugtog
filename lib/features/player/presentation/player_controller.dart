@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -12,6 +13,7 @@ import '../models/player_state.dart';
 class PlayerController extends Notifier<CurrentPlayerState> {
   late AudioPlayer _player;
   AndroidEqualizer? _equalizer;
+  static const _eqChannel = MethodChannel('com.tugtog.tugtog/equalizer');
   final List<StreamSubscription> _subscriptions = [];
   List<Track> _queueTracks = [];
   int _currentIndex = 0;
@@ -21,13 +23,25 @@ class PlayerController extends Notifier<CurrentPlayerState> {
 
   @override
   CurrentPlayerState build() {
-    // Note: Do not attach AudioPipeline with AndroidEqualizer to default AudioPlayer.
-    // On Xiaomi/MIUI/Redmi and Samsung devices, native AudioEffects in AudioPipeline
-    // cause native AudioSink stalls where playback position remains frozen at 0:00.
-    _player = AudioPlayer();
-    _equalizer = null;
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        _equalizer = AndroidEqualizer();
+        _player = AudioPlayer(
+          audioPipeline: AudioPipeline(
+            androidAudioEffects: [_equalizer!],
+          ),
+        );
+      } else {
+        _player = AudioPlayer();
+        _equalizer = null;
+      }
+    } catch (_) {
+      _player = AudioPlayer();
+      _equalizer = null;
+    }
 
     _initAudioSession();
+
     _listenToPlayerEvents();
 
     // Restore saved playback session from SQLite on startup
@@ -478,9 +492,19 @@ class PlayerController extends Notifier<CurrentPlayerState> {
   Future<AndroidEqualizerParameters?> getEqualizerParameters() async {
     if (_equalizer == null) return null;
     try {
-      return await _equalizer!.parameters;
+      return await _equalizer!.parameters.timeout(const Duration(seconds: 2));
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Opens the device/system native equalizer (Dolby Atmos, Mi Sound Enhancer, Dirac, etc.).
+  Future<bool> openSystemEqualizer() async {
+    try {
+      final res = await _eqChannel.invokeMethod<bool>('openSystemEqualizer');
+      return res ?? false;
+    } catch (_) {
+      return false;
     }
   }
 
