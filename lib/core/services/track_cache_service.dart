@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../../data/db/app_database.dart';
 import '../../domain/models/track.dart';
+import 'invidious_stream_service.dart';
 
 /// Service responsible for downloading, caching, and serving offline audio tracks
 /// (Spotify Premium / ViMusic style).
@@ -107,35 +108,51 @@ class TrackCacheService {
         }
       }
 
-      final yt = YoutubeExplode();
-      try {
-        if (videoId == null || videoId.isEmpty) {
-          final query = '${track.title} ${track.artist}'.trim();
-          final results = await yt.search.search(query);
-          if (results.isNotEmpty) {
-            videoId = results.first.id.value;
-          } else {
-            throw Exception('Could not find YouTube track for "${track.title}"');
+      // Priority 1: Invidious Proxy Stream
+      if (videoId != null && videoId.isNotEmpty) {
+        try {
+          final proxiedUrl =
+              await InvidiousStreamService.instance.getAudioStreamUrl(videoId);
+          if (proxiedUrl != null) {
+            directAudioUrl = proxiedUrl;
           }
+        } catch (_) {}
+      }
+
+      // Priority 2: YouTubeExplode fallback
+      if (directAudioUrl == null || directAudioUrl.isEmpty) {
+        final yt = YoutubeExplode();
+        try {
+          if (videoId == null || videoId.isEmpty) {
+            final query = '${track.title} ${track.artist}'.trim();
+            final results = await yt.search.search(query);
+            if (results.isNotEmpty) {
+              videoId = results.first.id.value;
+            } else {
+              throw Exception(
+                  'Could not find YouTube track for "${track.title}"');
+            }
+          }
+
+          final manifest = await yt.videos.streamsClient.getManifest(videoId);
+          final audioStreams = manifest.audioOnly;
+          if (audioStreams.isEmpty) {
+            throw Exception(
+                'No playable audio streams found for "${track.title}"');
+          }
+
+          final mp4Streams = audioStreams
+              .where((s) => s.container.name.toLowerCase() == 'mp4')
+              .toList();
+          final selectedStream = mp4Streams.isNotEmpty
+              ? mp4Streams.withHighestBitrate()
+              : audioStreams.withHighestBitrate();
+
+          directAudioUrl = selectedStream.url.toString();
+          totalBytes = selectedStream.size.totalBytes;
+        } finally {
+          yt.close();
         }
-
-        final manifest = await yt.videos.streamsClient.getManifest(videoId);
-        final audioStreams = manifest.audioOnly;
-        if (audioStreams.isEmpty) {
-          throw Exception('No playable audio streams found for "${track.title}"');
-        }
-
-        final mp4Streams = audioStreams
-            .where((s) => s.container.name.toLowerCase() == 'mp4')
-            .toList();
-        final selectedStream = mp4Streams.isNotEmpty
-            ? mp4Streams.withHighestBitrate()
-            : audioStreams.withHighestBitrate();
-
-        directAudioUrl = selectedStream.url.toString();
-        totalBytes = selectedStream.size.totalBytes;
-      } finally {
-        yt.close();
       }
     } else if (track.mediaUri != null && track.mediaUri!.startsWith('http')) {
       directAudioUrl = track.mediaUri;

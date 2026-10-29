@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/invidious_stream_service.dart';
 import '../../../../core/services/track_cache_service.dart';
 import '../../../../domain/models/track.dart';
 import '../../../../domain/sources/stream_resolver_strategy.dart';
@@ -62,7 +63,32 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
         }
       }
 
-      // Fetch audio-only stream manifest
+      // Priority 1: High-Speed Invidious / Piped Audio Proxy (Spotube architecture)
+      // Completely eliminates 403 Forbidden, PO-Token botguard, and mobile CGNAT drops
+      try {
+        final proxiedUrl =
+            await InvidiousStreamService.instance.getAudioStreamUrl(videoId);
+        if (proxiedUrl != null) {
+          final playableTrack = track.copyWith(
+            mediaUri: proxiedUrl,
+            extraMetadata: {
+              ...track.extraMetadata,
+              'videoId': videoId,
+              'isProxied': true,
+            },
+          );
+
+          return ResolutionResult.playable(
+            track: playableTrack,
+            sourceName: 'YouTube High-Speed Stream',
+            matchScore: 1.0,
+          );
+        }
+      } catch (e) {
+        debugPrint('Invidious resolution failed, falling back to direct: $e');
+      }
+
+      // Priority 2: Direct YouTubeExplode manifest extraction
       final manifest = await yt.videos.streamsClient.getManifest(videoId);
       final audioStreams = manifest.audioOnly;
       if (audioStreams.isEmpty) {

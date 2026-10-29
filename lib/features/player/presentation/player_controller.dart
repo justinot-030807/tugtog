@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -189,6 +190,8 @@ class PlayerController extends Notifier<CurrentPlayerState> {
       _player.playbackEventStream.listen(
         (_) {},
         onError: (Object e, StackTrace st) {
+          debugPrint('Playback error occurred in ExoPlayer: $e');
+          _player.pause().catchError((_) {});
           state = state.copyWith(isBuffering: false, isPlaying: false);
         },
       ),
