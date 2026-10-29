@@ -104,6 +104,27 @@ export const Scene6Outro: React.FC = () => {
           Ang Musika Mo. Walang Ads. Walang Harang.
         </p>
 
+        {/* Developer Attribution Card */}
+        <div
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: '10px 24px',
+            borderRadius: 24,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: 20,
+          }}
+        >
+          <span style={{ color: THEME.primary, fontSize: 16 }}>⚡</span>
+          <span style={{ fontSize: 16, color: THEME.textSecondary }}>
+            Developed by <strong style={{ color: '#ffffff' }}>Justine Lachica</strong>
+          </span>
+        </div>
+
+        <br />
+
         {/* Call to Action Button */}
         <div
           style={{

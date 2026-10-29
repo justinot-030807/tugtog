@@ -189,64 +189,24 @@ export const SearchScreenView: React.FC<{ query?: string; typingProgress?: numbe
           </div>
         </div>
 
-        {/* Group 3: Audius & Jamendo */}
+        {/* SimpMusic Architecture Engine Banner */}
         <div
           style={{
-            background: THEME.surface,
+            background: 'linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(18, 18, 18, 0.9))',
             borderRadius: 12,
             padding: 12,
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: `1px solid ${THEME.primary}44`,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                background: '#cc00ff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#ffffff">
-                <circle cx="12" cy="12" r="10" />
-                <polygon points="10 8 16 12 10 16 10 8" />
-              </svg>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ color: THEME.primary, fontSize: 14 }}>⚡</span>
             <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>
-              Audius & Jamendo (Indie)
+              SimpMusic Engine • 100% Ad-Free
             </span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: 6,
-                background: 'linear-gradient(135deg, #8a2387, #e94057, #f27121)',
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>Kathang Isip (Acoustic Cover)</div>
-              <div style={{ fontSize: 12, color: THEME.textSecondary }}>Acoustic Sessions • 4:45</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(204, 0, 255, 0.15)',
-                color: '#e066ff',
-                fontSize: 11,
-                fontWeight: 700,
-                padding: '4px 8px',
-                borderRadius: 12,
-              }}
-            >
-              Free
-            </div>
-          </div>
+          <p style={{ fontSize: 11, color: THEME.textSecondary, margin: 0, lineHeight: 1.4 }}>
+            Direct Invidious / Piped proxy resolution para sa tuloy-tuloy na pakikinig nang walang bayad.
+          </p>
         </div>
       </div>
     </div>

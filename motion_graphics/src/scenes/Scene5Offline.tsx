@@ -37,10 +37,10 @@ export const Scene5Offline: React.FC = () => {
       delay: 55,
     },
     {
-      title: '100% Standalone Phone App',
-      desc: 'Hindi kailangan ng PC server. Direct at mabilis.',
-      icon: '🔒',
-      color: '#cc00ff',
+      title: '5-Band Equalizer & Dolby Atmos',
+      desc: 'Custom audio curves, Bass Boost, at direct Xiaomi / Mi Sound Enhancer integration.',
+      icon: '🎛️',
+      color: THEME.primary,
       delay: 75,
     },
   ];

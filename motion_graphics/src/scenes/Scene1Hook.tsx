@@ -149,7 +149,7 @@ export const Scene1Hook: React.FC = () => {
               marginTop: 20,
             }}
           >
-            The Ultimate Ad-Free Music Player
+            Developed by Justine Lachica • SimpMusic Engine
           </div>
         </div>
       )}
