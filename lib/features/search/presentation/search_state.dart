@@ -36,6 +36,7 @@ class SearchState {
   final SourceSearchResult audiusResults;
   final SourceSearchResult jamendoResults;
   final List<String> recentSearches;
+  final List<Track> recentlyPlayed;
 
   const SearchState({
     this.query = '',
@@ -46,6 +47,7 @@ class SearchState {
     this.audiusResults = const SourceSearchResult(),
     this.jamendoResults = const SourceSearchResult(),
     this.recentSearches = const [],
+    this.recentlyPlayed = const [],
   });
 
   /// True if any source is actively loading.
@@ -73,6 +75,7 @@ class SearchState {
     SourceSearchResult? audiusResults,
     SourceSearchResult? jamendoResults,
     List<String>? recentSearches,
+    List<Track>? recentlyPlayed,
   }) {
     return SearchState(
       query: query ?? this.query,
@@ -83,6 +86,7 @@ class SearchState {
       audiusResults: audiusResults ?? this.audiusResults,
       jamendoResults: jamendoResults ?? this.jamendoResults,
       recentSearches: recentSearches ?? this.recentSearches,
+      recentlyPlayed: recentlyPlayed ?? this.recentlyPlayed,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import '../../../core/utils/music_classifier.dart';
 import '../../../domain/models/track.dart';
 import '../../../domain/sources/music_source.dart';
 import 'yt_music_auth_service.dart';
@@ -49,11 +50,17 @@ class YtMusicSource implements MusicSource {
   Track _mapJsonToTrack(Map<String, dynamic> item) {
     final videoId = item['videoId'] as String? ?? '';
     final durationStr = item['duration'] as String?;
+    final title = (item['title'] as String?) ?? 'Unknown Title';
+    final artist = (item['artists'] as String?) ?? 'Unknown Artist';
+    final isOriginal = MusicClassifier.isOriginalArtist(artist: artist, author: artist);
+    final isAudio = MusicClassifier.isAudioOnly(title: title, author: artist);
+    final isMV = MusicClassifier.isMusicVideo(title: title);
+    final genre = MusicClassifier.detectGenre(title: title, artist: artist);
 
     return Track(
       id: 'ytm_$videoId',
-      title: (item['title'] as String?) ?? 'Unknown Title',
-      artist: (item['artists'] as String?) ?? 'Unknown Artist',
+      title: title,
+      artist: artist,
       album: item['album'] as String?,
       duration: parseDuration(durationStr),
       artworkUrl: item['thumbnail'] as String?,
@@ -62,6 +69,11 @@ class YtMusicSource implements MusicSource {
         'videoId': videoId,
         'played': item['played'],
         'durationText': durationStr,
+        'isOfficial': isOriginal,
+        'isOriginalArtist': isOriginal,
+        'isAudio': isAudio,
+        'isMusicVideo': isMV,
+        'genre': genre,
       },
     );
   }
@@ -188,10 +200,16 @@ class YtMusicSource implements MusicSource {
           final videos =
               await yt.playlists.getVideos(playlistId).take(50).toList();
           return videos.map((video) {
-            final isOfficial = isOfficialTrack(video.title, video.author);
             final cleanArtist = video.author.endsWith(' - Topic')
                 ? video.author.replaceAll(' - Topic', '')
                 : video.author;
+            final isOriginal = MusicClassifier.isOriginalArtist(
+                artist: cleanArtist, author: video.author);
+            final isAudio = MusicClassifier.isAudioOnly(
+                title: video.title, author: video.author);
+            final isMV = MusicClassifier.isMusicVideo(title: video.title);
+            final genre = MusicClassifier.detectGenre(
+                title: video.title, artist: cleanArtist, query: playlist.title);
 
             return Track(
               id: 'ytm_${video.id.value}',
@@ -204,7 +222,11 @@ class YtMusicSource implements MusicSource {
               extraMetadata: {
                 'videoId': video.id.value,
                 'channelId': video.channelId.value,
-                'isOfficial': isOfficial,
+                'isOfficial': isOriginal,
+                'isOriginalArtist': isOriginal,
+                'isAudio': isAudio,
+                'isMusicVideo': isMV,
+                'genre': genre,
                 'playlistTitle': playlist.title,
               },
             );
@@ -226,10 +248,16 @@ class YtMusicSource implements MusicSource {
                 .compareTo(_computeScore(a, cleanQuery)));
 
           return sortedVideos.map((video) {
-            final isOfficial = isOfficialTrack(video.title, video.author);
             final cleanArtist = video.author.endsWith(' - Topic')
                 ? video.author.replaceAll(' - Topic', '')
                 : video.author;
+            final isOriginal = MusicClassifier.isOriginalArtist(
+                artist: cleanArtist, author: video.author);
+            final isAudio = MusicClassifier.isAudioOnly(
+                title: video.title, author: video.author);
+            final isMV = MusicClassifier.isMusicVideo(title: video.title);
+            final genre = MusicClassifier.detectGenre(
+                title: video.title, artist: cleanArtist, query: cleanQuery);
 
             return Track(
               id: 'ytm_${video.id.value}',
@@ -242,7 +270,11 @@ class YtMusicSource implements MusicSource {
                 'videoId': video.id.value,
                 'channelId': video.channelId.value,
                 'uploadDate': video.uploadDate?.toIso8601String(),
-                'isOfficial': isOfficial,
+                'isOfficial': isOriginal,
+                'isOriginalArtist': isOriginal,
+                'isAudio': isAudio,
+                'isMusicVideo': isMV,
+                'genre': genre,
               },
             );
           }).toList();
@@ -278,14 +310,34 @@ class YtMusicSource implements MusicSource {
       try {
         final searchResults = await yt.search.search('OPM and billboard trending music hits');
         return searchResults.take(limit).map((video) {
+          final cleanArtist = video.author.endsWith(' - Topic')
+              ? video.author.replaceAll(' - Topic', '')
+              : video.author;
+          final isOriginal = MusicClassifier.isOriginalArtist(
+              artist: cleanArtist, author: video.author);
+          final isAudio = MusicClassifier.isAudioOnly(
+              title: video.title, author: video.author);
+          final isMV = MusicClassifier.isMusicVideo(title: video.title);
+          final genre = MusicClassifier.detectGenre(
+              title: video.title, artist: cleanArtist, query: 'OPM trending');
+
           return Track(
             id: 'ytm_${video.id.value}',
             title: video.title,
-            artist: video.author,
+            artist: cleanArtist,
             duration: video.duration,
             artworkUrl: video.thumbnails.highResUrl,
             sourceType: AudioSourceType.youtubeMusic,
-            extraMetadata: {'videoId': video.id.value},
+            extraMetadata: {
+              'videoId': video.id.value,
+              'channelId': video.channelId.value,
+              'uploadDate': video.uploadDate?.toIso8601String(),
+              'isOfficial': isOriginal,
+              'isOriginalArtist': isOriginal,
+              'isAudio': isAudio,
+              'isMusicVideo': isMV,
+              'genre': genre,
+            },
           );
         }).toList();
       } finally {

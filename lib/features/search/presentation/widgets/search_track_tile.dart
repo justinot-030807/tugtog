@@ -54,25 +54,17 @@ class SearchTrackTile extends ConsumerWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      if (_shouldShowBadge) ...[
-                        _buildSourceBadge(),
-                        const SizedBox(width: 6),
-                      ],
-                      Expanded(
-                        child: Text(
-                          track.artist,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  _buildBadges(),
+                  const SizedBox(height: 2),
+                  Text(
+                    track.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -172,57 +164,152 @@ class SearchTrackTile extends ConsumerWidget {
     );
   }
 
-  bool get _shouldShowBadge =>
-      track.extraMetadata['isOfficial'] == true ||
-      track.sourceType == AudioSourceType.local;
+  Widget _buildBadges() {
+    final badges = <Widget>[];
 
-  Widget _buildSourceBadge() {
-    if (track.extraMetadata['isOfficial'] == true) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: AppColors.primary, width: 0.8),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_circle, color: AppColors.primary, size: 9),
-            SizedBox(width: 3),
-            Text(
-              'ORIGINAL',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.4,
+    final isOriginal = track.extraMetadata['isOriginalArtist'] == true ||
+        track.extraMetadata['isOfficial'] == true;
+    final isAudio = track.extraMetadata['isAudio'] == true;
+    final isMV = track.extraMetadata['isMusicVideo'] == true;
+    final genre = track.extraMetadata['genre'] as String?;
+
+    if (isOriginal) {
+      badges.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: AppColors.primary, width: 0.8),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.verified, color: AppColors.primary, size: 9),
+              SizedBox(width: 2.5),
+              Text(
+                'ORIGINAL',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
               ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (track.sourceType == AudioSourceType.local) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-        decoration: BoxDecoration(
-          color: Colors.blueAccent.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: Colors.blueAccent, width: 0.8),
-        ),
-        child: const Text(
-          'PHONE',
-          style: TextStyle(
-            color: Colors.blueAccent,
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
+            ],
           ),
         ),
       );
     }
 
-    return const SizedBox.shrink();
+    if (isAudio) {
+      badges.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: Colors.cyan.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.cyan, width: 0.8),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.audiotrack, color: Colors.cyan, size: 9),
+              SizedBox(width: 2.5),
+              Text(
+                'AUDIO',
+                style: TextStyle(
+                  color: Colors.cyan,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (isMV) {
+      badges.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: Colors.purpleAccent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.purpleAccent, width: 0.8),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.videocam, color: Colors.purpleAccent, size: 9),
+              SizedBox(width: 2.5),
+              Text(
+                'MUSIC VIDEO',
+                style: TextStyle(
+                  color: Colors.purpleAccent,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (genre != null && genre.isNotEmpty) {
+      badges.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.amber, width: 0.8),
+          ),
+          child: Text(
+            genre.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.amber,
+              fontSize: 8.5,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (track.sourceType == AudioSourceType.local) {
+      badges.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.blueAccent, width: 0.8),
+          ),
+          child: const Text(
+            'PHONE',
+            style: TextStyle(
+              color: Colors.blueAccent,
+              fontSize: 8.5,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (badges.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2.0, bottom: 2.0),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 2,
+        children: badges,
+      ),
+    );
   }
 }

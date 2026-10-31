@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../domain/models/track.dart';
 
-/// View displaying locally saved recent searches and browse genre categories.
+/// View displaying locally saved recent searches, recently played tracks, and browse genre categories.
 class RecentSearchesView extends StatelessWidget {
   final List<String> recentSearches;
+  final List<Track> recentlyPlayed;
   final void Function(String query) onSelectQuery;
   final void Function(String query) onRemoveQuery;
   final VoidCallback onClearAll;
+  final void Function(Track track, int index, List<Track> queue)? onPlayTrack;
 
   const RecentSearchesView({
     super.key,
     required this.recentSearches,
+    this.recentlyPlayed = const [],
     required this.onSelectQuery,
     required this.onRemoveQuery,
     required this.onClearAll,
+    this.onPlayTrack,
   });
 
   @override
@@ -21,6 +27,31 @@ class RecentSearchesView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: [
+        if (recentlyPlayed.isNotEmpty) ...[
+          const Text(
+            'Recently played',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 165,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: recentlyPlayed.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final track = recentlyPlayed[index];
+                return _buildRecentTrackCard(context, track, index);
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
         if (recentSearches.isNotEmpty) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -100,6 +131,143 @@ class RecentSearchesView extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildRecentTrackCard(BuildContext context, Track track, int index) {
+    final genre = track.extraMetadata['genre'] as String?;
+    final isOriginal = track.extraMetadata['isOriginalArtist'] == true ||
+        track.extraMetadata['isOfficial'] == true;
+
+    return InkWell(
+      onTap: () => onPlayTrack?.call(track, index, recentlyPlayed),
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 110,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    width: 110,
+                    height: 110,
+                    child: _buildArtwork(track),
+                  ),
+                ),
+                if (isOriginal)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: AppColors.primary, width: 0.8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified, color: AppColors.primary, size: 8),
+                          SizedBox(width: 2),
+                          Text(
+                            'ORIG',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (genre != null && genre.isNotEmpty)
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        genre.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              track.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              track.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArtwork(Track track) {
+    if (track.sourceType == AudioSourceType.local) {
+      final songId = track.extraMetadata['songId'] as int? ??
+          int.tryParse(track.id.replaceAll('local_', ''));
+      if (songId != null) {
+        return QueryArtworkWidget(
+          id: songId,
+          type: ArtworkType.AUDIO,
+          artworkBorder: BorderRadius.zero,
+          nullArtworkWidget: _buildPlaceholder(),
+        );
+      }
+    }
+
+    if (track.artworkUrl != null && track.artworkUrl!.isNotEmpty) {
+      return Image.network(
+        track.artworkUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+      );
+    }
+
+    return _buildPlaceholder();
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      color: AppColors.surfaceElevated,
+      child: const Center(
+        child: Icon(
+          Icons.music_note,
+          color: AppColors.textSecondary,
+          size: 32,
+        ),
+      ),
     );
   }
 

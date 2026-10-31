@@ -120,12 +120,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             child: searchState.query.isEmpty
                 ? RecentSearchesView(
                     recentSearches: searchState.recentSearches,
+                    recentlyPlayed: searchState.recentlyPlayed,
                     onSelectQuery: (selectedQuery) {
                       _searchController.text = selectedQuery;
                       notifier.executeSearch(selectedQuery);
                     },
                     onRemoveQuery: (query) => notifier.removeRecentSearch(query),
                     onClearAll: () => notifier.clearRecentSearches(),
+                    onPlayTrack: (track, index, queue) =>
+                        _onTrackSelected(track, index, queue),
                   )
                 : _buildSearchResults(searchState, notifier),
           ),

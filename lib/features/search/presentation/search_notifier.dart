@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/db/app_database.dart';
 import '../../../data/sources/audius/audius_source.dart';
 import '../../../data/sources/jamendo/jamendo_source.dart';
 import '../../../data/sources/local/local_music_source.dart';
@@ -28,7 +29,10 @@ class SearchNotifier extends Notifier<SearchState> {
       _debounceTimer?.cancel();
     });
 
-    Future.microtask(() => loadRecentSearches());
+    Future.microtask(() {
+      loadRecentSearches();
+      loadRecentlyPlayed();
+    });
     return const SearchState();
   }
 
@@ -46,6 +50,7 @@ class SearchNotifier extends Notifier<SearchState> {
         audiusResults: const SourceSearchResult(),
         jamendoResults: const SourceSearchResult(),
       );
+      loadRecentlyPlayed();
       return;
     }
 
@@ -71,6 +76,7 @@ class SearchNotifier extends Notifier<SearchState> {
       audiusResults: const SourceSearchResult(),
       jamendoResults: const SourceSearchResult(),
     );
+    loadRecentlyPlayed();
   }
 
   /// Executes parallel search across Local, YouTube Music, Audius, and Jamendo.
@@ -246,6 +252,14 @@ class SearchNotifier extends Notifier<SearchState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_recentSearchesKey);
+    } catch (_) {}
+  }
+
+  /// Loads recently played tracks from SQLite play history.
+  Future<void> loadRecentlyPlayed() async {
+    try {
+      final recent = await AppDatabase.instance.getRecentlyPlayed(limit: 15);
+      state = state.copyWith(recentlyPlayed: recent);
     } catch (_) {}
   }
 }
