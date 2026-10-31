@@ -94,22 +94,147 @@ class YtMusicSource implements MusicSource {
     return [];
   }
 
+  /// Evaluates whether a video is likely the official/original studio release.
+  static bool isOfficialTrack(String title, String author) {
+    final lowerTitle = title.toLowerCase();
+    final lowerAuthor = author.toLowerCase();
+
+    // 1. YouTube Music auto-generated Topic channels are ALWAYS the official studio releases
+    if (lowerAuthor.endsWith(' - topic')) return true;
+
+    // 2. VEVO or verified record label channels
+    if (lowerAuthor.contains('vevo') || lowerAuthor.contains('records')) return true;
+
+    // 3. Official indicators in title
+    if (lowerTitle.contains('(official audio)') ||
+        lowerTitle.contains('[official audio]') ||
+        lowerTitle.contains('(official video)') ||
+        lowerTitle.contains('[official video]') ||
+        lowerTitle.contains('(official music video)') ||
+        lowerTitle.contains('[official music video]') ||
+        lowerTitle.contains('(visualizer)') ||
+        lowerTitle.contains('(audio)')) {
+      return true;
+    }
+
+    // 4. Penalize if title is an unofficial cover, karaoke, or fan edit
+    if (lowerTitle.contains('cover') ||
+        lowerTitle.contains('karaoke') ||
+        lowerTitle.contains('instrumental') ||
+        lowerTitle.contains('remix') ||
+        lowerTitle.contains('slowed') ||
+        lowerTitle.contains('reverb') ||
+        lowerTitle.contains('1 hour') ||
+        lowerTitle.contains('bass boosted') ||
+        lowerTitle.contains('nightcore') ||
+        lowerTitle.contains('mashup') ||
+        lowerTitle.contains('reaction')) {
+      return false;
+    }
+
+    return false;
+  }
+
+  static int _computeScore(Video video, String query) {
+    final lowerTitle = video.title.toLowerCase();
+    final lowerAuthor = video.author.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+
+    int score = 0;
+
+    // Keyword match
+    if (lowerTitle.contains(lowerQuery)) score += 50;
+    if (lowerAuthor.contains(lowerQuery)) score += 30;
+
+    // Official status bonuses
+    if (lowerAuthor.endsWith(' - topic')) score += 100;
+    if (lowerAuthor.contains('vevo')) score += 80;
+    if (lowerTitle.contains('official audio') ||
+        lowerTitle.contains('official music video')) {
+      score += 60;
+    }
+    if (lowerTitle.contains('(audio)') || lowerTitle.contains('[audio]')) {
+      score += 40;
+    }
+
+    // Penalties for covers, karaoke, slowed/reverb when not searched
+    if (!lowerQuery.contains('cover') && lowerTitle.contains('cover')) score -= 70;
+    if (!lowerQuery.contains('karaoke') && lowerTitle.contains('karaoke')) score -= 80;
+    if (!lowerQuery.contains('remix') && lowerTitle.contains('remix')) score -= 50;
+    if (!lowerQuery.contains('slowed') &&
+        (lowerTitle.contains('slowed') || lowerTitle.contains('reverb'))) {
+      score -= 90;
+    }
+    if (lowerTitle.contains('1 hour') || lowerTitle.contains('10 hour')) score -= 100;
+    if (lowerTitle.contains('reaction')) score -= 90;
+
+    return score;
+  }
+
   @override
   Future<List<Track>> search(String query) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) return [];
 
-    // 1. Primary: Direct YouTube search via YoutubeExplode (Works everywhere without backend)
+    // 0. Check for YouTube / YouTube Music Playlist URL or Playlist ID
+    final playlistRegex = RegExp(r'[?&]list=([a-zA-Z0-9_-]+)');
+    final match = playlistRegex.firstMatch(cleanQuery);
+    if (match != null) {
+      final playlistId = match.group(1)!;
+      try {
+        final yt = YoutubeExplode();
+        try {
+          final playlist = await yt.playlists.get(playlistId);
+          final videos =
+              await yt.playlists.getVideos(playlistId).take(50).toList();
+          return videos.map((video) {
+            final isOfficial = isOfficialTrack(video.title, video.author);
+            final cleanArtist = video.author.endsWith(' - Topic')
+                ? video.author.replaceAll(' - Topic', '')
+                : video.author;
+
+            return Track(
+              id: 'ytm_${video.id.value}',
+              title: video.title,
+              artist: cleanArtist,
+              album: playlist.title,
+              duration: video.duration,
+              artworkUrl: video.thumbnails.highResUrl,
+              sourceType: AudioSourceType.youtubeMusic,
+              extraMetadata: {
+                'videoId': video.id.value,
+                'channelId': video.channelId.value,
+                'isOfficial': isOfficial,
+                'playlistTitle': playlist.title,
+              },
+            );
+          }).toList();
+        } finally {
+          yt.close();
+        }
+      } catch (_) {}
+    }
+
+    // 1. Primary: Direct YouTube search with intelligent official ranking
     try {
       final yt = YoutubeExplode();
       try {
         final searchResults = await yt.search.search(cleanQuery);
         if (searchResults.isNotEmpty) {
-          return searchResults.map((video) {
+          final sortedVideos = searchResults.toList()
+            ..sort((a, b) => _computeScore(b, cleanQuery)
+                .compareTo(_computeScore(a, cleanQuery)));
+
+          return sortedVideos.map((video) {
+            final isOfficial = isOfficialTrack(video.title, video.author);
+            final cleanArtist = video.author.endsWith(' - Topic')
+                ? video.author.replaceAll(' - Topic', '')
+                : video.author;
+
             return Track(
               id: 'ytm_${video.id.value}',
               title: video.title,
-              artist: video.author,
+              artist: cleanArtist,
               duration: video.duration,
               artworkUrl: video.thumbnails.highResUrl,
               sourceType: AudioSourceType.youtubeMusic,
@@ -117,6 +242,7 @@ class YtMusicSource implements MusicSource {
                 'videoId': video.id.value,
                 'channelId': video.channelId.value,
                 'uploadDate': video.uploadDate?.toIso8601String(),
+                'isOfficial': isOfficial,
               },
             );
           }).toList();

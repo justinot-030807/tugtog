@@ -57,8 +57,10 @@ class SearchTrackTile extends ConsumerWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      _buildSourceBadge(),
-                      const SizedBox(width: 6),
+                      if (_shouldShowBadge) ...[
+                        _buildSourceBadge(),
+                        const SizedBox(width: 6),
+                      ],
                       Expanded(
                         child: Text(
                           track.artist,
@@ -170,44 +172,57 @@ class SearchTrackTile extends ConsumerWidget {
     );
   }
 
-  Widget _buildSourceBadge() {
-    Color color;
-    String label;
+  bool get _shouldShowBadge =>
+      track.extraMetadata['isOfficial'] == true ||
+      track.sourceType == AudioSourceType.local;
 
-    switch (track.sourceType) {
-      case AudioSourceType.local:
-        color = AppColors.primary;
-        label = 'Phone';
-        break;
-      case AudioSourceType.youtubeMusic:
-        color = Colors.redAccent;
-        label = 'YTM';
-        break;
-      case AudioSourceType.audius:
-        color = const Color(0xFFCC00FF);
-        label = 'Audius';
-        break;
-      case AudioSourceType.jamendo:
-        color = const Color(0xFFFF9900);
-        label = 'Jamendo';
-        break;
+  Widget _buildSourceBadge() {
+    if (track.extraMetadata['isOfficial'] == true) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: AppColors.primary, width: 0.8),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, color: AppColors.primary, size: 9),
+            SizedBox(width: 3),
+            Text(
+              'ORIGINAL',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 0.8),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
+    if (track.sourceType == AudioSourceType.local) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+        decoration: BoxDecoration(
+          color: Colors.blueAccent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: Colors.blueAccent, width: 0.8),
         ),
-      ),
-    );
+        child: const Text(
+          'PHONE',
+          style: TextStyle(
+            color: Colors.blueAccent,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }

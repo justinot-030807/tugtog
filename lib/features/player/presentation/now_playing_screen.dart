@@ -11,6 +11,7 @@ import '../models/player_state.dart';
 import 'player_controller.dart';
 import 'sleep_timer_notifier.dart';
 import 'widgets/equalizer_bottom_sheet.dart';
+import 'widgets/lyrics_sheet.dart';
 import 'widgets/queue_bottom_sheet.dart';
 import 'widgets/sleep_timer_bottom_sheet.dart';
 
@@ -81,6 +82,15 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     );
   }
 
+  void _showLyricsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LyricsSheet(dynamicColor: _dynamicColor),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerControllerProvider);
@@ -107,9 +117,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             Text(
               track?.extraMetadata['isDownloaded'] == true
                   ? 'PLAYING FROM DOWNLOADS'
-                  : (track?.sourceType == AudioSourceType.youtubeMusic
-                      ? 'PLAYING FROM YOUTUBE MUSIC'
-                      : 'PLAYING FROM PLAYLIST'),
+                  : (track?.sourceType == AudioSourceType.local
+                      ? 'PLAYING FROM DEVICE'
+                      : 'PLAYING FROM TUGTOG'),
               style: const TextStyle(
                 fontSize: 10,
                 letterSpacing: 1.5,
@@ -122,13 +132,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               track?.album ??
                   (track?.extraMetadata['isDownloaded'] == true
                       ? 'Downloaded (Offline)'
-                      : (track?.sourceType == AudioSourceType.youtubeMusic
-                          ? 'YouTube Music (Online)'
-                          : (track?.sourceType == AudioSourceType.audius
-                              ? 'Audius'
-                              : (track?.sourceType == AudioSourceType.jamendo
-                                  ? 'Jamendo'
-                                  : 'On Your Phone')))),
+                      : (track?.sourceType == AudioSourceType.local
+                          ? 'On Your Phone'
+                          : 'Online Music')),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -154,9 +160,23 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 _showSleepTimerSheet();
               } else if (val == 'equalizer') {
                 _showEqualizerSheet();
+              } else if (val == 'lyrics') {
+                _showLyricsSheet();
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'lyrics',
+                child: Row(
+                  children: [
+                    Icon(Icons.lyrics_outlined,
+                        color: AppColors.textPrimary, size: 20),
+                    SizedBox(width: 10),
+                    Text('Lyrics',
+                        style: TextStyle(color: AppColors.textPrimary)),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'sleep_timer',
                 child: Row(
@@ -525,6 +545,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             color: AppColors.textSecondary,
           ),
           onPressed: _showEqualizerSheet,
+        ),
+
+        // Lyrics Button
+        IconButton(
+          tooltip: 'Lyrics',
+          icon: const Icon(
+            Icons.lyrics_outlined,
+            size: 22,
+            color: AppColors.textSecondary,
+          ),
+          onPressed: _showLyricsSheet,
         ),
 
         // Queue Sheet Button

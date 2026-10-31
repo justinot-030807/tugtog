@@ -34,11 +34,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   void _onTrackSelected(Track track, int index, List<Track> groupTracks) {
     if (track.sourceType == AudioSourceType.youtubeMusic) {
-      // Delegate to stream resolver (Strategy A: Audius/Jamendo match or Strategy B: YouTube IFrame)
+      // Delegate to stream resolver with full search result queue intact
       ref.read(ytStreamResolverProvider).resolveAndPlay(
             context: context,
             ref: ref,
             track: track,
+            queue: groupTracks,
+            initialIndex: index,
           );
     } else {
       // Play directly in PlayerController
@@ -171,11 +173,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return ListView(
       padding: const EdgeInsets.only(top: 8, bottom: 24),
       children: [
-        // Group 1: YouTube Music (Online Catalog - Ad-free)
+        // Group 1: Top Songs (Online Catalog - Ad-free)
         SearchGroupSection(
-          title: 'YouTube Music (No Ads)',
-          icon: Icons.play_circle_fill,
-          iconColor: Colors.redAccent,
+          title: 'Songs',
+          icon: Icons.music_note,
+          iconColor: AppColors.primary,
           result: searchState.ytmResults,
           onTrackTap: _onTrackSelected,
           onRetry: () => notifier.retrySource('ytm'),

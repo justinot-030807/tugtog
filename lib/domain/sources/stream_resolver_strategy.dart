@@ -97,5 +97,7 @@ abstract class StreamResolverStrategy {
     required BuildContext context,
     required WidgetRef ref,
     required Track track,
+    List<Track>? queue,
+    int initialIndex = 0,
   });
 }

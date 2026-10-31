@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import '../../../core/services/invidious_stream_service.dart';
+import '../../../core/services/track_cache_service.dart';
 import '../../../data/db/app_database.dart';
 import '../../../domain/models/track.dart';
 import '../models/player_state.dart';
@@ -193,6 +196,16 @@ class PlayerController extends Notifier<CurrentPlayerState> {
           isBuffering: isBuffering,
         );
 
+        // Auto-advance to next track when current song finishes
+        if (playerState.processingState == ProcessingState.completed) {
+          if (state.loopMode == LoopMode.one) {
+            seek(Duration.zero);
+            play();
+          } else {
+            seekToNext();
+          }
+        }
+
         if (!isPlaying) {
           _saveCurrentSession();
         }
@@ -314,33 +327,183 @@ class PlayerController extends Notifier<CurrentPlayerState> {
     }
   }
 
+  /// Resolves an audio track's playable URI if it is not already available.
+  Future<Track> _resolveTrack(Track track) async {
+    // 1. If already valid URI, return immediately
+    if (track.mediaUri != null && track.mediaUri!.isNotEmpty) {
+      return track;
+    }
+
+    // 2. Check offline disk cache
+    final cachedPath =
+        await TrackCacheService.instance.getCachedFilePath(track.id);
+    if (cachedPath != null) {
+      return track.copyWith(
+        mediaUri: cachedPath,
+        extraMetadata: {
+          ...track.extraMetadata,
+          'isDownloaded': true,
+          'localFilePath': cachedPath,
+        },
+      );
+    }
+
+    // 3. Extract videoId
+    String? videoId = track.extraMetadata['videoId'] as String?;
+    if (videoId == null || videoId.isEmpty) {
+      if (track.id.startsWith('ytm_')) {
+        videoId = track.id.substring(4);
+      }
+    }
+
+    if (videoId != null && videoId.isNotEmpty) {
+      // Priority 1: High-speed Invidious proxy stream
+      try {
+        final proxiedUrl =
+            await InvidiousStreamService.instance.getAudioStreamUrl(videoId);
+        if (proxiedUrl != null) {
+          return track.copyWith(
+            mediaUri: proxiedUrl,
+            extraMetadata: {
+              ...track.extraMetadata,
+              'videoId': videoId,
+              'isProxied': true,
+            },
+          );
+        }
+      } catch (_) {}
+
+      // Priority 2: Direct YouTubeExplode manifest
+      try {
+        final yt = YoutubeExplode();
+        try {
+          final manifest = await yt.videos.streamsClient.getManifest(videoId);
+          final audioStreams = manifest.audioOnly;
+          if (audioStreams.isNotEmpty) {
+            final mp4Streams = audioStreams
+                .where((s) => s.container.name.toLowerCase() == 'mp4')
+                .toList();
+            final selected = mp4Streams.isNotEmpty
+                ? mp4Streams.withHighestBitrate()
+                : audioStreams.withHighestBitrate();
+
+            return track.copyWith(
+              mediaUri: selected.url.toString(),
+              extraMetadata: {
+                ...track.extraMetadata,
+                'videoId': videoId,
+              },
+            );
+          }
+        } finally {
+          yt.close();
+        }
+      } catch (_) {}
+    }
+
+    return track;
+  }
+
+  /// Plays track at given index within the current queue, resolving online streams on-the-fly.
+  Future<void> playTrackAtIndex(int index) async {
+    if (index < 0 || index >= _queueTracks.length) return;
+
+    _currentIndex = index;
+    final originalTrack = _queueTracks[index];
+
+    state = state.copyWith(
+      currentIndex: index,
+      currentTrack: originalTrack,
+      isBuffering: true,
+      position: Duration.zero,
+      totalDuration: originalTrack.duration ?? Duration.zero,
+    );
+
+    final resolvedTrack = await _resolveTrack(originalTrack);
+    _queueTracks[index] = resolvedTrack;
+
+    state = state.copyWith(
+      currentTrack: resolvedTrack,
+      queue: List.unmodifiable(_queueTracks),
+      totalDuration: resolvedTrack.duration ?? state.totalDuration,
+    );
+
+    try {
+      final audioSource = _buildAudioSource(resolvedTrack);
+      await _player.setAudioSource(audioSource);
+      await _player.play();
+
+      try {
+        _db.logPlayHistory(resolvedTrack);
+      } catch (_) {}
+      _saveCurrentSession();
+    } catch (e) {
+      debugPrint('Playback error at index $index: $e');
+      state = state.copyWith(isBuffering: false, isPlaying: false);
+    }
+  }
+
+  /// Trigger Spotify-style autoplay / radio when reaching the end of the queue.
+  Future<void> _triggerAutoplay() async {
+    try {
+      final yt = YoutubeExplode();
+      try {
+        final current = state.currentTrack;
+        final query = current != null
+            ? '${current.artist} hits'
+            : 'OPM trending music hits';
+        final searchResults = await yt.search.search(query);
+        final newTracks = searchResults
+            .where((v) => !_queueTracks.any((q) => q.id == 'ytm_${v.id.value}'))
+            .take(10)
+            .map((video) {
+          final cleanArtist = video.author.endsWith(' - Topic')
+              ? video.author.replaceAll(' - Topic', '')
+              : video.author;
+          return Track(
+            id: 'ytm_${video.id.value}',
+            title: video.title,
+            artist: cleanArtist,
+            duration: video.duration,
+            artworkUrl: video.thumbnails.highResUrl,
+            sourceType: AudioSourceType.youtubeMusic,
+            extraMetadata: {
+              'videoId': video.id.value,
+              'channelId': video.channelId.value,
+              'isOfficial': true,
+            },
+          );
+        }).toList();
+
+        if (newTracks.isNotEmpty) {
+          _queueTracks.addAll(newTracks);
+          state = state.copyWith(queue: List.unmodifiable(_queueTracks));
+          if (_currentIndex < _queueTracks.length - 1) {
+            await playTrackAtIndex(_currentIndex + 1);
+          }
+        }
+      } finally {
+        yt.close();
+      }
+    } catch (_) {}
+  }
+
   /// Play a list of tracks starting from an initial index.
   Future<void> playSongList(List<Track> tracks, int initialIndex) async {
     if (tracks.isEmpty) return;
 
     _queueTracks = List.from(tracks);
-    _currentIndex = initialIndex;
-    _currentPosition = Duration.zero;
+    final validIndex = initialIndex.clamp(0, _queueTracks.length - 1);
 
     state = state.copyWith(
       queue: List.unmodifiable(_queueTracks),
-      currentIndex: initialIndex,
-      currentTrack: _queueTracks[initialIndex],
+      currentIndex: validIndex,
+      currentTrack: _queueTracks[validIndex],
       position: Duration.zero,
-      totalDuration: _queueTracks[initialIndex].duration ?? Duration.zero,
+      totalDuration: _queueTracks[validIndex].duration ?? Duration.zero,
     );
 
-    try {
-      await _player.setAudioSources(
-        _queueTracks.map(_buildAudioSource).toList(),
-        initialIndex: initialIndex,
-        initialPosition: Duration.zero,
-      );
-      await _player.play();
-      _saveCurrentSession();
-    } catch (_) {
-      state = state.copyWith(isBuffering: false, isPlaying: false);
-    }
+    await playTrackAtIndex(validIndex);
   }
 
   /// Play a single track.
@@ -372,39 +535,47 @@ class PlayerController extends Notifier<CurrentPlayerState> {
 
   /// Skip to next track in queue.
   Future<void> seekToNext() async {
-    if (_player.hasNext) {
-      await _player.seekToNext();
+    if (_queueTracks.isEmpty) return;
+
+    if (state.isShuffling && _queueTracks.length > 1) {
+      final nextIdx =
+          DateTime.now().millisecondsSinceEpoch % _queueTracks.length;
+      final target = nextIdx == _currentIndex
+          ? (nextIdx + 1) % _queueTracks.length
+          : nextIdx;
+      await playTrackAtIndex(target);
+      return;
+    }
+
+    if (_currentIndex < _queueTracks.length - 1) {
+      await playTrackAtIndex(_currentIndex + 1);
+    } else if (state.loopMode == LoopMode.all) {
+      await playTrackAtIndex(0);
+    } else {
+      await _triggerAutoplay();
     }
   }
 
   /// Skip to previous track, or restart current track if > 3 seconds.
   Future<void> seekToPrevious() async {
-    if (_player.position.inSeconds > 3) {
-      await _player.seek(Duration.zero);
-    } else if (_player.hasPrevious) {
-      await _player.seekToPrevious();
+    if (_currentPosition.inSeconds > 3) {
+      await seek(Duration.zero);
+    } else if (_currentIndex > 0) {
+      await playTrackAtIndex(_currentIndex - 1);
     } else {
-      await _player.seek(Duration.zero);
+      await seek(Duration.zero);
     }
   }
 
   /// Jump to a specific track index in the queue.
   Future<void> jumpToQueueItem(int index) async {
-    if (index >= 0 && index < _queueTracks.length) {
-      _currentIndex = index;
-      _currentPosition = Duration.zero;
-      await _player.seek(Duration.zero, index: index);
-      await _player.play();
-    }
+    await playTrackAtIndex(index);
   }
 
   /// Toggle shuffle mode on / off.
   Future<void> toggleShuffle() async {
     final enable = !state.isShuffling;
-    if (enable) {
-      await _player.shuffle();
-    }
-    await _player.setShuffleModeEnabled(enable);
+    state = state.copyWith(isShuffling: enable);
   }
 
   /// Cycle repeat mode: off -> all -> one -> off.
@@ -422,26 +593,20 @@ class PlayerController extends Notifier<CurrentPlayerState> {
         next = LoopMode.off;
         break;
     }
-    await _player.setLoopMode(next);
+    state = state.copyWith(loopMode: next);
   }
 
   /// Add track right after the current playing song.
   Future<void> addToNext(Track track) async {
-    final nextIndex = _currentIndex + 1;
-    if (nextIndex <= _queueTracks.length) {
-      _queueTracks.insert(nextIndex, track);
-      await _player.insertAudioSource(nextIndex, _buildAudioSource(track));
-      state = state.copyWith(queue: List.unmodifiable(_queueTracks));
-      _saveCurrentSession();
-    } else {
-      await addToEnd(track);
-    }
+    final nextIndex = (_currentIndex + 1).clamp(0, _queueTracks.length);
+    _queueTracks.insert(nextIndex, track);
+    state = state.copyWith(queue: List.unmodifiable(_queueTracks));
+    _saveCurrentSession();
   }
 
   /// Append track to the end of the queue.
   Future<void> addToEnd(Track track) async {
     _queueTracks.add(track);
-    await _player.addAudioSource(_buildAudioSource(track));
     state = state.copyWith(queue: List.unmodifiable(_queueTracks));
     _saveCurrentSession();
   }
@@ -461,8 +626,13 @@ class PlayerController extends Notifier<CurrentPlayerState> {
         return;
       }
       _queueTracks.removeAt(index);
-      await _player.removeAudioSourceAt(index);
-      state = state.copyWith(queue: List.unmodifiable(_queueTracks));
+      if (_currentIndex > index) {
+        _currentIndex--;
+      }
+      state = state.copyWith(
+        queue: List.unmodifiable(_queueTracks),
+        currentIndex: _currentIndex,
+      );
       _saveCurrentSession();
     }
   }
@@ -479,8 +649,19 @@ class PlayerController extends Notifier<CurrentPlayerState> {
         targetIndex < _queueTracks.length) {
       final movedTrack = _queueTracks.removeAt(oldIndex);
       _queueTracks.insert(targetIndex, movedTrack);
-      await _player.moveAudioSource(oldIndex, targetIndex);
-      state = state.copyWith(queue: List.unmodifiable(_queueTracks));
+
+      if (_currentIndex == oldIndex) {
+        _currentIndex = targetIndex;
+      } else if (oldIndex < _currentIndex && targetIndex >= _currentIndex) {
+        _currentIndex--;
+      } else if (oldIndex > _currentIndex && targetIndex <= _currentIndex) {
+        _currentIndex++;
+      }
+
+      state = state.copyWith(
+        queue: List.unmodifiable(_queueTracks),
+        currentIndex: _currentIndex,
+      );
       _saveCurrentSession();
     }
   }

@@ -107,8 +107,13 @@ class MatchAudioStrategy implements StreamResolverStrategy {
     required BuildContext context,
     required WidgetRef ref,
     required Track track,
+    List<Track>? queue,
+    int initialIndex = 0,
   }) async {
     if (!context.mounted) return;
+
+    final effectiveQueue = (queue != null && queue.isNotEmpty) ? List<Track>.from(queue) : [track];
+    final effectiveIndex = initialIndex.clamp(0, effectiveQueue.length - 1);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -139,7 +144,8 @@ class MatchAudioStrategy implements StreamResolverStrategy {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     if (result.type == ResolutionType.playable && result.track != null) {
-      ref.read(playerControllerProvider.notifier).playSongList([result.track!], 0);
+      effectiveQueue[effectiveIndex] = result.track!;
+      ref.read(playerControllerProvider.notifier).playSongList(effectiveQueue, effectiveIndex);
 
       final pct = (result.matchScore! * 100).toInt();
       ScaffoldMessenger.of(context).showSnackBar(

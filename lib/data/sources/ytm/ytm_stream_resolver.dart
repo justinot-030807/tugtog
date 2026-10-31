@@ -57,6 +57,8 @@ class YtStreamResolver implements StreamResolver {
     required BuildContext context,
     required WidgetRef ref,
     required Track track,
+    List<Track>? queue,
+    int initialIndex = 0,
   }) async {
     final strategy = activeStrategy;
     if (strategy == null) {
@@ -71,6 +73,8 @@ class YtStreamResolver implements StreamResolver {
       context: context,
       ref: ref,
       track: track,
+      queue: queue,
+      initialIndex: initialIndex,
     );
   }
 }

@@ -46,6 +46,8 @@ class YouTubeIFrameStrategy implements StreamResolverStrategy {
     required BuildContext context,
     required WidgetRef ref,
     required Track track,
+    List<Track>? queue,
+    int initialIndex = 0,
   }) async {
     final result = await resolve(track);
 

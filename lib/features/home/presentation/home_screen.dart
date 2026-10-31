@@ -430,9 +430,9 @@ class HomeScreen extends ConsumerWidget {
     List<Track> queue,
     int index,
   ) {
-    final isYtm = track.sourceType == AudioSourceType.youtubeMusic;
-    final badgeColor = isYtm ? Colors.redAccent : AppColors.primary;
-    final badgeLabel = isYtm ? 'YouTube Music' : 'Tugtog';
+    final isOfficial = track.extraMetadata['isOfficial'] == true;
+    final badgeColor = isOfficial ? AppColors.primary : AppColors.primary.withValues(alpha: 0.8);
+    final badgeLabel = isOfficial ? 'ORIGINAL' : 'Tugtog';
 
     return Container(
       width: 135,
@@ -445,6 +445,8 @@ class HomeScreen extends ConsumerWidget {
                   context: context,
                   ref: ref,
                   track: track,
+                  queue: queue,
+                  initialIndex: index,
                 );
           } else {
             ref.read(playerControllerProvider.notifier).playSongList(queue, index);
@@ -538,10 +540,10 @@ class HomeScreen extends ConsumerWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.play_circle_fill, color: Colors.redAccent, size: 22),
+                Icon(Icons.history, color: AppColors.primary, size: 22),
                 SizedBox(width: 8),
                 Text(
-                  'Recently played on YouTube Music',
+                  'Recently Played',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -670,7 +672,7 @@ class HomeScreen extends ConsumerWidget {
               itemCount: state.tracks.length,
               itemBuilder: (context, index) {
                 final track = state.tracks[index];
-                return _buildYtmTrackCard(context, ref, track);
+                return _buildYtmTrackCard(context, ref, track, state.tracks, index);
               },
             ),
           ),
@@ -678,7 +680,13 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildYtmTrackCard(BuildContext context, WidgetRef ref, Track track) {
+  Widget _buildYtmTrackCard(
+    BuildContext context,
+    WidgetRef ref,
+    Track track,
+    List<Track> queue,
+    int index,
+  ) {
     final playedLabel = track.extraMetadata['played'] as String?;
 
     return Container(
@@ -691,6 +699,8 @@ class HomeScreen extends ConsumerWidget {
                 context: context,
                 ref: ref,
                 track: track,
+                queue: queue,
+                initialIndex: index,
               );
         },
         child: Column(

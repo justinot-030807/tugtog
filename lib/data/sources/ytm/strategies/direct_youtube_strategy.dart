@@ -129,9 +129,16 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
     required BuildContext context,
     required WidgetRef ref,
     required Track track,
+    List<Track>? queue,
+    int initialIndex = 0,
   }) async {
+    final effectiveQueue =
+        (queue != null && queue.isNotEmpty) ? List<Track>.from(queue) : [track];
+    final effectiveIndex = initialIndex.clamp(0, effectiveQueue.length - 1);
+
     // 1. If already cached, play immediately from disk (0ms buffer)
-    final cachedPath = await TrackCacheService.instance.getCachedFilePath(track.id);
+    final cachedPath =
+        await TrackCacheService.instance.getCachedFilePath(track.id);
     if (cachedPath != null) {
       final playable = track.copyWith(
         mediaUri: cachedPath,
@@ -141,7 +148,11 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
           'localFilePath': cachedPath,
         },
       );
-      await ref.read(playerControllerProvider.notifier).playSongList([playable], 0);
+      effectiveQueue[effectiveIndex] = playable;
+      await ref.read(playerControllerProvider.notifier).playSongList(
+            effectiveQueue,
+            effectiveIndex,
+          );
       return;
     }
 
@@ -197,10 +208,12 @@ class DirectYoutubeStrategy implements StreamResolverStrategy {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
       }
 
+      effectiveQueue[effectiveIndex] = result.track!;
+
       // Play immediately without making user wait for full download!
       await ref.read(playerControllerProvider.notifier).playSongList(
-        [result.track!],
-        0,
+        effectiveQueue,
+        effectiveIndex,
       );
 
       // 4. Background Auto-Download Cache (Spotify Premium style)

@@ -38,7 +38,7 @@ class AppUpdateService {
   static const _updaterChannel = MethodChannel('com.tugtog.tugtog/updater');
 
   /// Current semantic version of the installed Tugtog client.
-  static const String currentAppVersion = '1.0.1';
+  static const String currentAppVersion = '1.0.2';
 
   /// GitHub repository slug hosting official releases.
   static const String repoOwner = 'justinot-030807';
