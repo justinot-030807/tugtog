@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/services/app_update_service.dart';
 import '../../../core/services/track_cache_service.dart';
 import '../../library/presentation/downloaded_notifier.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/sources/ytm/yt_music_auth_service.dart';
 import '../../home/presentation/ytm_history_notifier.dart';
 import 'settings_notifier.dart';
+import 'widgets/update_dialog.dart';
 import 'yt_music_login_screen.dart';
 
 /// Settings screen for configuring companion backend URL, connectivity, and info.
@@ -22,6 +24,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isTesting = false;
   String? _testResult;
   bool _testSuccess = false;
+  bool _isCheckingUpdate = false;
+
+  Future<void> _handleCheckUpdate() async {
+    setState(() => _isCheckingUpdate = true);
+    final updateInfo = await AppUpdateService.instance.checkForUpdate();
+    if (!mounted) return;
+    setState(() => _isCheckingUpdate = false);
+
+    if (updateInfo != null && updateInfo.hasUpdate) {
+      UpdateDialog.show(context, updateInfo);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nasa pinakabagong bersyon ka na! (Tugtog v1.0.0 is up to date)'),
+          backgroundColor: AppColors.surfaceElevated,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -643,6 +665,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.textSecondary,
                     height: 1.4,
                   ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // In-App Update Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.system_update_rounded, color: AppColors.primary, size: 22),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Software Updates',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Tugtog v1.0.0 (SimpMusic Engine)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _isCheckingUpdate ? null : _handleCheckUpdate,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: _isCheckingUpdate
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Text(
+                          'Check Update',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ],
             ),

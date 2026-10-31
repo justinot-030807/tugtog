@@ -1,4 +1,5 @@
 import 'package:on_audio_query/on_audio_query.dart';
+import '../../../core/utils/audio_permission_helper.dart';
 import '../../../domain/models/local_album.dart';
 import '../../../domain/models/local_artist.dart';
 import '../../../domain/models/song.dart';
@@ -21,6 +22,11 @@ class LocalMusicSource implements MusicSource {
   /// Query all local audio files from MediaStore via on_audio_query safely.
   Future<List<Song>> queryAllSongs() async {
     try {
+      final status = await AudioPermissionHelper.checkPermission();
+      if (status != AudioPermissionState.granted) {
+        return [];
+      }
+
       final songModels = await _audioQuery.querySongs(
         sortType: SongSortType.TITLE,
         orderType: OrderType.ASC_OR_SMALLER,
@@ -59,6 +65,11 @@ class LocalMusicSource implements MusicSource {
   /// Query all local music albums safely.
   Future<List<LocalAlbum>> queryAllAlbums() async {
     try {
+      final status = await AudioPermissionHelper.checkPermission();
+      if (status != AudioPermissionState.granted) {
+        return [];
+      }
+
       final albumModels = await _audioQuery.queryAlbums(
         sortType: AlbumSortType.ALBUM,
         orderType: OrderType.ASC_OR_SMALLER,
@@ -84,6 +95,11 @@ class LocalMusicSource implements MusicSource {
   /// Query all local music artists safely.
   Future<List<LocalArtist>> queryAllArtists() async {
     try {
+      final status = await AudioPermissionHelper.checkPermission();
+      if (status != AudioPermissionState.granted) {
+        return [];
+      }
+
       final artistModels = await _audioQuery.queryArtists(
         sortType: ArtistSortType.ARTIST,
         orderType: OrderType.ASC_OR_SMALLER,

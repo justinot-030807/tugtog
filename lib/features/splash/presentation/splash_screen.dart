@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/audio_permission_helper.dart';
 import '../../navigation/presentation/main_scaffold.dart';
 
 /// Spotify-style animated Splash Screen showcasing Tugtog and Developer Justine Lachica.
@@ -42,6 +43,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
 
     _animController.forward();
+
+    // Safely prompt initial audio permission on first install without freezing UI
+    Future.delayed(const Duration(milliseconds: 600), () async {
+      try {
+        final status = await AudioPermissionHelper.checkPermission();
+        if (status == AudioPermissionState.denied) {
+          await AudioPermissionHelper.requestPermission();
+        }
+      } catch (_) {
+        // Silently ignore if permission request fails or is dismissed
+      }
+    });
 
     // Navigate to MainScaffold after smooth splash animation
     Timer(const Duration(milliseconds: 2300), () {
